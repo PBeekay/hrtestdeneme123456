@@ -1,0 +1,61 @@
+# Planlar ve dokümantasyon (sadece lokal)
+DATABASE_SETUP.md
+ADVANCED_FEATURES.md
+UI_IMPROVEMENTS.md
+WHATS_NEW.md
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+build/
+dist/
+*.egg-info/
+
+# Frontend
+frontend/node_modules/
+frontend/build/
+frontend/.pnp/
+frontend/.pnp.js
+frontend/coverage/
+
+# Backend
+backend/__pycache__/
+backend/venv/
+backend/.env
+
+# Logs
+*.log
+
+# Database
+*.sql.backup
+
