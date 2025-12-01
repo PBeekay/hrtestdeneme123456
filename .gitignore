@@ -52,6 +52,8 @@ frontend/coverage/
 backend/__pycache__/
 backend/venv/
 backend/.env
+backend/logs/
+backend/uploads/
 
 # Logs
 *.log

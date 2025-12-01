@@ -7,9 +7,24 @@ interface StatCardProps {
   delay?: number;
   trend?: 'up' | 'down' | 'neutral';
   trendValue?: string;
+  onClick?: () => void;
+  ctaLabel?: string;
+  disabled?: boolean;
+  ariaLabel?: string;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ icon, label, value, delay = 0, trend, trendValue }) => {
+const StatCard: React.FC<StatCardProps> = ({
+  icon,
+  label,
+  value,
+  delay = 0,
+  trend,
+  trendValue,
+  onClick,
+  ctaLabel,
+  disabled = false,
+  ariaLabel,
+}) => {
   const getTrendIcon = () => {
     if (!trend) return null;
     switch (trend) {
@@ -22,9 +37,30 @@ const StatCard: React.FC<StatCardProps> = ({ icon, label, value, delay = 0, tren
     }
   };
 
+  const interactive = Boolean(onClick) && !disabled;
+
   return (
     <div
-      className="bg-white/70 dark:bg-neutral-800/70 backdrop-blur-sm rounded-xl p-3 border border-white dark:border-neutral-700 shadow-sm hover:shadow-md hover:scale-105 transition-all duration-300 animate-fadeInUp cursor-pointer group"
+      role={interactive ? 'button' : undefined}
+      aria-label={interactive && ariaLabel ? ariaLabel : undefined}
+      aria-disabled={disabled || undefined}
+      tabIndex={interactive ? 0 : -1}
+      onClick={interactive ? onClick : undefined}
+      onKeyDown={
+        interactive
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onClick?.();
+              }
+            }
+          : undefined
+      }
+      className={`bg-white/70 dark:bg-neutral-800/70 backdrop-blur-sm rounded-xl p-3 border border-white dark:border-neutral-700 shadow-sm transition-all duration-300 animate-fadeInUp group ${
+        interactive
+          ? 'hover:shadow-md hover:scale-105 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500'
+          : ''
+      } ${disabled ? 'opacity-70 cursor-not-allowed' : ''}`}
       style={{ animationDelay: `${delay}ms`, animationFillMode: 'both' }}
     >
       <div className="flex items-center space-x-2">
@@ -42,6 +78,12 @@ const StatCard: React.FC<StatCardProps> = ({ icon, label, value, delay = 0, tren
           </div>
         </div>
       </div>
+      {interactive && ctaLabel && (
+        <div className="mt-2 flex items-center space-x-1 text-[10px] font-semibold text-primary-600 dark:text-primary-400">
+          <span>{ctaLabel}</span>
+          <span>→</span>
+        </div>
+      )}
     </div>
   );
 };

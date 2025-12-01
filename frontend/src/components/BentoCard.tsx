@@ -18,12 +18,12 @@ const BentoCard: React.FC<BentoCardProps> = ({
       className={`
         bg-white 
         dark:bg-neutral-800
-        rounded-2xl 
+        rounded-xl 
         shadow-sm 
-        ${interactive ? 'hover:shadow-lg hover:scale-[1.01]' : ''} 
+        ${interactive ? 'hover:shadow-md hover:scale-[1.005]' : ''} 
         transition-all 
         duration-300 
-        p-4
+        p-3
         border 
         border-neutral-100
         dark:border-neutral-700
