@@ -263,7 +263,7 @@ const EmployeeManagementPage: React.FC<EmployeeManagementPageProps> = ({
     setSavingNote(false);
 
     if (result.status === 200) {
-      addToast('Not kaydedildi ✅', 'success');
+      addToast('Not kaydedildi', 'success');
       setNote('');
     } else {
       addToast(result.error || 'Not kaydedilemedi', 'error');
@@ -375,15 +375,15 @@ const EmployeeManagementPage: React.FC<EmployeeManagementPageProps> = ({
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <SummaryCard label="Toplam Çalışan" value={effectiveStats.totalEmployees} accent="from-blue-500 to-indigo-600" icon="👥" />
-            <SummaryCard label="İzinde" value={effectiveStats.onLeave} accent="from-amber-500 to-orange-500" icon="🏖️" />
+            <SummaryCard label="Toplam Çalışan" value={effectiveStats.totalEmployees} accent="from-blue-500 to-indigo-600" icon="" />
+            <SummaryCard label="İzinde" value={effectiveStats.onLeave} accent="from-amber-500 to-orange-500" icon="" />
             <SummaryCard
               label="Bekleyen Belgeler"
               value={effectiveStats.pendingDocuments}
               accent="from-rose-500 to-pink-500"
               icon="📄"
             />
-            <SummaryCard label="Onboarding" value={effectiveStats.onboarding} accent="from-emerald-500 to-green-600" icon="✨" />
+            <SummaryCard label="Onboarding" value={effectiveStats.onboarding} accent="from-emerald-500 to-green-600" icon="" />
           </div>
         </div>
 

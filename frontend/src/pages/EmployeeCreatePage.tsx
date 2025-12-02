@@ -63,7 +63,7 @@ const EmployeeCreatePage: React.FC<EmployeeCreatePageProps> = ({ userRole, onBac
       setSubmitting(false);
 
       if (result.status === 200 || result.status === 201) {
-        addToast('Çalışan başarıyla oluşturuldu 🎉', 'success');
+        addToast('Çalışan başarıyla oluşturuldu', 'success');
         setFormData(initialForm);
         navigate('/employees');
       } else {

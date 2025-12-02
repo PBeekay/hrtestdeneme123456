@@ -43,8 +43,8 @@ print("✅ Database connection pool initialized")
 
 def get_db_connection():
     """
-    Get a connection from the pool
-    Much faster than creating new connections each time
+    Bağlantı havuzundan bir veritabanı bağlantısı döndürür.
+    Her seferinde yeni bağlantı açmaktan çok daha performanslıdır.
     """
     try:
         connection = db_pool.connection()
@@ -132,7 +132,7 @@ def authenticate_user(username: str, password: str) -> Optional[Dict[str, Any]]:
 
 def get_user_by_id(user_id: int) -> Optional[Dict[str, Any]]:
     """
-    Get user by ID
+    Kullanıcı ID'sine göre kullanıcı bilgilerini döndürür.
     """
     try:
         with get_db_cursor() as cursor:
@@ -150,7 +150,7 @@ def get_user_by_id(user_id: int) -> Optional[Dict[str, Any]]:
 
 def get_user_dashboard_data(user_id: int) -> Optional[Dict[str, Any]]:
     """
-    Get all dashboard data for a user
+    Yönetici / İK kullanıcısı için tüm dashboard verilerini döndürür.
     """
     try:
         user_info = get_user_by_id(user_id)
@@ -183,7 +183,7 @@ def get_user_dashboard_data(user_id: int) -> Optional[Dict[str, Any]]:
 
 def get_leave_balance(user_id: int, year: int = 2025) -> Dict[str, int]:
     """
-    Get leave balance for a user
+    Belirtilen kullanıcı için yıl bazında izin bakiyelerini döndürür.
     """
     try:
         with get_db_cursor() as cursor:
@@ -211,7 +211,7 @@ def get_leave_balance(user_id: int, year: int = 2025) -> Dict[str, int]:
 
 def get_user_tasks(user_id: int, status: str = 'pending') -> List[Dict[str, Any]]:
     """
-    Get tasks for a user
+    Belirtilen kullanıcı için görev listesini döndürür.
     """
     try:
         with get_db_cursor() as cursor:
@@ -254,7 +254,7 @@ def update_task_status(task_id: int, status: str) -> bool:
 
 def get_performance_metrics(user_id: int) -> List[Dict[str, Any]]:
     """
-    Get performance metrics for a user
+    Kullanıcıya ait performans metriklerini döndürür.
     """
     try:
         with get_db_cursor() as cursor:
@@ -275,7 +275,7 @@ def get_performance_metrics(user_id: int) -> List[Dict[str, Any]]:
 
 def get_active_announcements(limit: int = 10) -> List[Dict[str, Any]]:
     """
-    Get active announcements
+    Aktif duyuruları döndürür.
     """
     try:
         with get_db_cursor() as cursor:
@@ -303,7 +303,7 @@ def get_active_announcements(limit: int = 10) -> List[Dict[str, Any]]:
 
 def get_work_schedule(user_id: int, days: int = 7) -> List[Dict[str, Any]]:
     """
-    Get work schedule for the last N days
+    Kullanıcının son N gün için çalışma takvimini döndürür.
     """
     try:
         with get_db_cursor() as cursor:
@@ -330,7 +330,7 @@ def get_work_schedule(user_id: int, days: int = 7) -> List[Dict[str, Any]]:
 
 def get_leave_requests(user_id: int, status: Optional[str] = None) -> List[Dict[str, Any]]:
     """
-    Get leave requests for a user
+    Belirtilen kullanıcı için izin taleplerini döndürür.
     """
     try:
         with get_db_cursor() as cursor:
@@ -418,7 +418,7 @@ def approve_leave_request(request_id: int, admin_id: int, approved: bool, reason
 
 def get_user_widgets(user_id: int) -> List[Dict[str, Any]]:
     """
-    Get user's dashboard widget preferences
+    Kullanıcının dashboard widget tercihlerini döndürür.
     """
     try:
         with get_db_cursor() as cursor:
@@ -469,7 +469,7 @@ def update_user_widgets(user_id: int, widgets: List[Dict[str, Any]]) -> bool:
 
 def get_employee_dashboard_data(user_id: int) -> Optional[Dict[str, Any]]:
     """
-    Get employee-specific dashboard data
+    Çalışan rolü için özelleştirilmiş dashboard verilerini döndürür
     """
     try:
         user_info = get_user_by_id(user_id)
@@ -556,7 +556,7 @@ def delete_session(token: str) -> bool:
 
 def get_asset_categories() -> List[Dict]:
     """
-    Get all asset categories
+    Tüm zimmet kategorilerini döndürür.
     """
     conn = get_db_connection()
     if not conn:
@@ -579,7 +579,7 @@ def get_asset_categories() -> List[Dict]:
 
 def get_employee_assets(employee_id: int, status: Optional[str] = None) -> List[Dict]:
     """
-    Get assets assigned to an employee
+    Belirtilen çalışana zimmetlenmiş eşyaları döndürür.
     """
     conn = get_db_connection()
     if not conn:
@@ -644,7 +644,7 @@ def get_employee_assets(employee_id: int, status: Optional[str] = None) -> List[
 
 def get_all_assets(status: Optional[str] = None) -> List[Dict]:
     """
-    Get all assets (admin view)
+    Tüm zimmet kayıtlarını (admin görünümü) döndürür.
     """
     conn = get_db_connection()
     if not conn:
@@ -854,9 +854,8 @@ def delete_asset_assignment(asset_id: int) -> bool:
 
 def get_asset_statistics(employee_id: Optional[int] = None) -> Dict:
     """
-    Get asset statistics
-    If employee_id is provided, returns stats for that employee
-    Otherwise, returns overall stats
+    Zimmet istatistiklerini döndürür.
+    employee_id verilirse sadece o çalışanın; verilmezse genel istatistikleri hesaplar.
     """
     conn = get_db_connection()
     if not conn:
@@ -894,6 +893,384 @@ def get_asset_statistics(employee_id: Optional[int] = None) -> Dict:
     except Exception as e:
         print(f"Get asset statistics error: {e}")
         return {}
+    finally:
+        conn.close()
+
+
+# ==================== ÇALIŞAN YÖNETİMİ ====================
+
+def get_all_employees() -> List[Dict[str, Any]]:
+    """
+    Kullanıcılar tablosundan tüm çalışanları getirir.
+    EmployeeManagement ekranının ihtiyaç duyduğu çalışan profil listesini üretir.
+    """
+    conn = get_db_connection()
+    if not conn:
+        return []
+    
+    try:
+        with conn.cursor() as cursor:
+            # Tüm kullanıcıların temel bilgilerini al
+            # Not: users tablosunda bazı alanlar olmayabilir, bu durumda eksikleri zarifçe atlıyoruz
+            query = """
+                SELECT 
+                    id,
+                    full_name as name,
+                    role,
+                    department,
+                    email,
+                    avatar,
+                    user_role,
+                    created_at as startDate
+                FROM users
+                ORDER BY full_name ASC
+            """
+            cursor.execute(query)
+            employees = cursor.fetchall()
+            
+            # Sonuçları frontend'deki EmployeeProfile tipine uygun hale getir
+            result = []
+            for emp in employees:
+                employee_data = {
+                    'id': emp['id'],
+                    'name': emp['name'],
+                    'role': emp['role'],
+                    'department': emp['department'] or 'Belirtilmemiş',
+                    'email': emp['email'],
+                    'avatar': emp.get('avatar', emp['name'][:2].upper()),
+                    'startDate': emp['startDate'].strftime('%Y-%m-%d') if emp['startDate'] else '',
+                    'status': 'active',  # Default, will be updated when status column exists
+                    'documents': []  # Will be populated when employee_documents table exists
+                }
+                
+                # phone, manager, location alanları varsa almaya çalış
+                try:
+                    cursor.execute("""
+                        SELECT phone, manager, location, status
+                        FROM users WHERE id = %s
+                    """, (emp['id'],))
+                    extra = cursor.fetchone()
+                    if extra:
+                        if extra.get('phone'):
+                            employee_data['phone'] = extra['phone']
+                        if extra.get('manager'):
+                            employee_data['manager'] = extra['manager']
+                        if extra.get('location'):
+                            employee_data['location'] = extra['location']
+                        if extra.get('status'):
+                            employee_data['status'] = extra['status']
+                except:
+                    pass  # Columns don't exist yet, skip
+                
+                # employee_documents tablosu varsa belge bilgilerini almaya çalış
+                try:
+                    cursor.execute("""
+                        SELECT id, title, type, uploaded_at, status, uploaded_by
+                        FROM employee_documents
+                        WHERE employee_id = %s
+                        ORDER BY uploaded_at DESC
+                    """, (emp['id'],))
+                    docs = cursor.fetchall()
+                    if docs:
+                        employee_data['documents'] = [
+                            {
+                                'id': doc['id'],
+                                'title': doc['title'],
+                                'type': doc['type'],
+                                'uploadedAt': doc['uploaded_at'].strftime('%Y-%m-%d') if doc['uploaded_at'] else '',
+                                'status': doc['status'],
+                                'uploadedBy': 'HR'  # Will be updated when we have user lookup
+                            }
+                            for doc in docs
+                        ]
+                except:
+                    pass  # Table doesn't exist yet
+                
+                result.append(employee_data)
+            
+            return result
+    except Exception as e:
+        print(f"Get all employees error: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
+    finally:
+        conn.close()
+
+
+def get_employee_stats() -> Dict[str, Any]:
+    """
+    Çalışan istatistiklerini döndürür.
+    Toplam çalışan, izinde olanlar, bekleyen belgeler ve onboarding sayılarını hesaplar.
+    """
+    conn = get_db_connection()
+    if not conn:
+        return {
+            'totalEmployees': 0,
+            'onLeave': 0,
+            'pendingDocuments': 0,
+            'onboarding': 0
+        }
+    
+    try:
+        with conn.cursor() as cursor:
+            # Toplam çalışan sayısı
+            cursor.execute("SELECT COUNT(*) as total FROM users")
+            total_result = cursor.fetchone()
+            total_employees = total_result['total'] if total_result else 0
+            
+            # İzinli çalışan sayısı (status kolonu varsa)
+            on_leave = 0
+            try:
+                cursor.execute("SELECT COUNT(*) as count FROM users WHERE status = 'on_leave'")
+                on_leave_result = cursor.fetchone()
+                on_leave = on_leave_result['count'] if on_leave_result else 0
+            except:
+                pass  # Column doesn't exist yet
+            
+            # Bekleyen belge sayısı (employee_documents tablosu varsa)
+            pending_docs = 0
+            try:
+                cursor.execute("SELECT COUNT(*) as count FROM employee_documents WHERE status = 'pending'")
+                pending_result = cursor.fetchone()
+                pending_docs = pending_result['count'] if pending_result else 0
+            except:
+                pass  # Table doesn't exist yet
+            
+            # Son 30 günde eklenen çalışan sayısı (onboarding)
+            try:
+                cursor.execute("""
+                    SELECT COUNT(*) as count 
+                    FROM users 
+                    WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+                """)
+                onboarding_result = cursor.fetchone()
+                onboarding = onboarding_result['count'] if onboarding_result else 0
+            except:
+                onboarding = 0
+            
+            return {
+                'totalEmployees': total_employees,
+                'onLeave': on_leave,
+                'pendingDocuments': pending_docs,
+                'onboarding': onboarding
+            }
+    except Exception as e:
+        print(f"Get employee stats error: {e}")
+        import traceback
+        traceback.print_exc()
+        return {
+            'totalEmployees': 0,
+            'onLeave': 0,
+            'pendingDocuments': 0,
+            'onboarding': 0
+        }
+    finally:
+        conn.close()
+
+
+def create_employee(
+    name: str,
+    email: str,
+    department: str,
+    role: str,
+    password: Optional[str] = None,
+    phone: Optional[str] = None,
+    manager: Optional[str] = None,
+    location: Optional[str] = None,
+    start_date: Optional[str] = None,
+    status: str = 'active'
+) -> Optional[int]:
+    """
+    Yeni bir çalışan/kullanıcı oluşturur.
+    Başarılı olursa yeni çalışan ID'sini döndürür, hata durumunda None döner.
+    """
+    conn = get_db_connection()
+    if not conn:
+        return None
+    
+    try:
+        with conn.cursor() as cursor:
+            # E-postadan otomatik kullanıcı adı üret
+            username = email.split('@')[0]
+            
+            # Kullanıcı adı veya e-posta zaten kullanılıyor mu kontrol et
+            cursor.execute("SELECT id FROM users WHERE username = %s OR email = %s", (username, email))
+            if cursor.fetchone():
+                print(f"User with username {username} or email {email} already exists")
+                return None
+            
+            # Şifreyi hashle (şifre verilmemişse varsayılan bir şifre kullan)
+            if not password:
+                password = "TempPass123!"  # Should be changed on first login
+            password_hash = hash_password(password)
+            
+            # İsim baş harflerinden avatar kısaltması oluştur
+            initials = ''.join([word[0].upper() for word in name.split()[:2]])
+            
+            # Mevcut kolonlara göre INSERT sorgusunu dinamik oluştur
+            base_query = """
+                INSERT INTO users (username, password_hash, full_name, email, role, department, avatar, user_role)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, 'employee')
+            """
+            base_values = [username, password_hash, name, email, role, department, initials]
+            
+            # Opsiyonel alanlar (phone, manager, location, start_date, status) varsa ekle
+            extra_fields = []
+            extra_values = []
+            
+            if phone:
+                try:
+                    cursor.execute("SHOW COLUMNS FROM users LIKE 'phone'")
+                    if cursor.fetchone():
+                        extra_fields.append("phone")
+                        extra_values.append(phone)
+                except:
+                    pass
+            
+            if manager:
+                try:
+                    cursor.execute("SHOW COLUMNS FROM users LIKE 'manager'")
+                    if cursor.fetchone():
+                        extra_fields.append("manager")
+                        extra_values.append(manager)
+                except:
+                    pass
+            
+            if location:
+                try:
+                    cursor.execute("SHOW COLUMNS FROM users LIKE 'location'")
+                    if cursor.fetchone():
+                        extra_fields.append("location")
+                        extra_values.append(location)
+                except:
+                    pass
+            
+            if start_date:
+                try:
+                    cursor.execute("SHOW COLUMNS FROM users LIKE 'start_date'")
+                    if cursor.fetchone():
+                        extra_fields.append("start_date")
+                        extra_values.append(start_date)
+                except:
+                    pass
+            
+            if status:
+                try:
+                    cursor.execute("SHOW COLUMNS FROM users LIKE 'status'")
+                    if cursor.fetchone():
+                        extra_fields.append("status")
+                        extra_values.append(status)
+                except:
+                    pass
+            
+            if extra_fields:
+                base_query = base_query.replace(")", f", {', '.join(extra_fields)})")
+                base_query = base_query.replace("VALUES (%s" * 7, f"VALUES ({', '.join(['%s'] * (7 + len(extra_fields)))}")
+            
+            all_values = base_values + extra_values
+            cursor.execute(base_query, all_values)
+            conn.commit()
+            
+            new_id = cursor.lastrowid
+            print(f"Created new employee with ID: {new_id}")
+            return new_id
+    except Exception as e:
+        print(f"Create employee error: {e}")
+        import traceback
+        traceback.print_exc()
+        conn.rollback()
+        return None
+    finally:
+        conn.close()
+
+
+def add_employee_note(employee_id: int, note: str, created_by: int) -> Optional[int]:
+    """
+    Bir çalışana not ekler.
+    Başarılı olursa not ID'sini döndürür, aksi halde None döner.
+    """
+    conn = get_db_connection()
+    if not conn:
+        return None
+    
+    try:
+        with conn.cursor() as cursor:
+            # Tablo var mı kontrol et
+            cursor.execute("""
+                SELECT COUNT(*) as count
+                FROM information_schema.tables
+                WHERE table_schema = DATABASE()
+                AND table_name = 'employee_notes'
+            """)
+            table_exists = cursor.fetchone()['count'] > 0
+            
+            if not table_exists:
+                print("employee_notes table does not exist yet")
+                return None
+            
+            cursor.execute("""
+                INSERT INTO employee_notes (employee_id, note, created_by)
+                VALUES (%s, %s, %s)
+            """, (employee_id, note, created_by))
+            conn.commit()
+            
+            return cursor.lastrowid
+    except Exception as e:
+        print(f"Add employee note error: {e}")
+        import traceback
+        traceback.print_exc()
+        conn.rollback()
+        return None
+    finally:
+        conn.close()
+
+
+def upload_employee_document(
+    employee_id: int,
+    title: str,
+    doc_type: str,
+    uploaded_by: int,
+    document_url: Optional[str] = None,
+    document_filename: Optional[str] = None
+) -> Optional[int]:
+    """
+    Bir çalışana belge kaydı ekler.
+    Başarılı olursa belge ID'sini döndürür, aksi halde None döner.
+    """
+    conn = get_db_connection()
+    if not conn:
+        return None
+    
+    try:
+        with conn.cursor() as cursor:
+            # Tablo var mı kontrol et
+            cursor.execute("""
+                SELECT COUNT(*) as count
+                FROM information_schema.tables
+                WHERE table_schema = DATABASE()
+                AND table_name = 'employee_documents'
+            """)
+            table_exists = cursor.fetchone()['count'] > 0
+            
+            if not table_exists:
+                print("employee_documents table does not exist yet")
+                return None
+            
+            cursor.execute("""
+                INSERT INTO employee_documents 
+                (employee_id, title, type, uploaded_by, document_url, document_filename, status)
+                VALUES (%s, %s, %s, %s, %s, %s, 'pending')
+            """, (employee_id, title, doc_type, uploaded_by, document_url, document_filename))
+            conn.commit()
+            
+            return cursor.lastrowid
+    except Exception as e:
+        print(f"Upload employee document error: {e}")
+        import traceback
+        traceback.print_exc()
+        conn.rollback()
+        return None
     finally:
         conn.close()
 

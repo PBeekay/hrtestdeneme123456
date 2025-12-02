@@ -71,7 +71,7 @@ const LeaveManagementPage: React.FC<LeaveManagementPageProps> = ({
       const result = await api.updateLeaveRequest(requestId, status);
       if (result.status === 200) {
         addToast(
-          status === 'approved' ? 'Talep onaylandı ✅' : 'Talep reddedildi ❌',
+          status === 'approved' ? 'Talep onaylandı' : 'Talep reddedildi',
           status === 'approved' ? 'success' : 'warning'
         );
         setAdminRequests((prev) =>
@@ -117,7 +117,7 @@ const LeaveManagementPage: React.FC<LeaveManagementPageProps> = ({
       setSubmitting(false);
 
       if (result.status === 200) {
-        addToast('İzin talebin alındı 🎉', 'success');
+        addToast('İzin talebi alındı', 'success');
         setFormData({
           leaveType: 'annual',
           startDate: '',
@@ -150,21 +150,21 @@ const LeaveManagementPage: React.FC<LeaveManagementPageProps> = ({
         label: 'Yıllık',
         total: leaveBalance.annual,
         accent: 'from-amber-500 to-orange-500',
-        icon: '🌴',
+        icon: '',
       },
       {
         key: 'sick',
         label: 'Hastalık',
         total: leaveBalance.sick,
         accent: 'from-rose-500 to-pink-500',
-        icon: '🩺',
+        icon: '',
       },
       {
         key: 'personal',
         label: 'Mazeret',
         total: leaveBalance.personal,
         accent: 'from-sky-500 to-blue-500',
-        icon: '🕊️',
+        icon: '',
       },
     ],
     [leaveBalance]

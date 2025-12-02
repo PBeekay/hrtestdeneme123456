@@ -283,7 +283,7 @@ const AssetManagementPanel: React.FC<AssetManagementPanelProps> = ({ onClose, on
           {showAddForm && (
             <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl p-6 mb-6 border-2 border-purple-200 dark:border-purple-800">
               <h3 className="text-lg font-bold text-neutral-900 dark:text-white mb-4">
-                {editingAsset ? '✏️ Zimmet Düzenle' : '➕ Yeni Zimmet Ekle'}
+                {editingAsset ? 'Zimmet Düzenle' : 'Yeni Zimmet Ekle'}
               </h3>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -472,19 +472,19 @@ const AssetManagementPanel: React.FC<AssetManagementPanelProps> = ({ onClose, on
                           onClick={() => handleEdit(asset)}
                           className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-lg text-xs font-semibold hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
                         >
-                          ✏️ Düzenle
+                          Düzenle
                         </button>
                         <button
                           onClick={() => handleReturn(asset.id)}
                           className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-lg text-xs font-semibold hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
                         >
-                          ✓ İade
+                          İade
                         </button>
                         <button
                           onClick={() => handleDelete(asset.id)}
                           className="px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-lg text-xs font-semibold hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
                         >
-                          🗑️ Sil
+                          Sil
                         </button>
                       </div>
                     )}

@@ -53,7 +53,6 @@ const AssetCard: React.FC<AssetCardProps> = ({ assets, userRole, onViewDocument,
             onClick={onManage}
             className="px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white text-xs font-semibold rounded-lg transition-all transform hover:scale-105 flex items-center space-x-1 shadow-md"
           >
-            <span>⚙️</span>
             <span className="hidden sm:inline">Yönetim</span>
           </button>
         )}
@@ -61,7 +60,9 @@ const AssetCard: React.FC<AssetCardProps> = ({ assets, userRole, onViewDocument,
         
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center py-6">
-            <div className="text-4xl mb-2">📦</div>
+            <div className="w-12 h-12 mx-auto mb-2 bg-neutral-200 dark:bg-neutral-700 rounded-lg flex items-center justify-center">
+              <span className="text-xl font-bold text-neutral-500">Z</span>
+            </div>
             <p className="text-xs text-neutral-500 dark:text-neutral-400">
               Henüz zimmet kaydı bulunmuyor
             </p>
@@ -76,7 +77,6 @@ const AssetCard: React.FC<AssetCardProps> = ({ assets, userRole, onViewDocument,
       {/* Header with Manage Button */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-2">
-          <span className="text-xl">📦</span>
           <h3 className="text-base font-semibold text-neutral-900 dark:text-white">Zimmetlerim</h3>
         </div>
           {userRole === 'admin' && onManage && (

@@ -69,7 +69,7 @@ class ErrorBoundary extends Component<Props, State> {
             {/* Error Icon */}
             <div className="text-center mb-6">
               <div className="inline-flex items-center justify-center w-20 h-20 bg-red-100 dark:bg-red-900/30 rounded-full mb-4">
-                <span className="text-5xl">⚠️</span>
+                <span className="text-3xl font-bold text-red-600 dark:text-red-400">!</span>
               </div>
               <h1 className="text-3xl font-bold text-red-600 dark:text-red-400 mb-2">
                 Bir Şeyler Yanlış Gitti
@@ -111,7 +111,6 @@ class ErrorBoundary extends Component<Props, State> {
                 onClick={this.handleReset}
                 className="flex-1 px-6 py-3 bg-neutral-200 hover:bg-neutral-300 dark:bg-neutral-700 dark:hover:bg-neutral-600 text-neutral-800 dark:text-white font-semibold rounded-xl transition-colors flex items-center justify-center space-x-2"
               >
-                <span>↩️</span>
                 <span>Tekrar Dene</span>
               </button>
             </div>

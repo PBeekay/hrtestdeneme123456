@@ -110,7 +110,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, error }) => {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
                 >
-                  <span className="text-lg">{showPassword ? '👁️' : '👁️‍🗨️'}</span>
+                  <span className="text-sm font-semibold">{showPassword ? 'Gizle' : 'Göster'}</span>
                 </button>
               </div>
             </div>
@@ -119,7 +119,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, error }) => {
             {(error || validationError) && (
               <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-xl p-3 animate-shake">
                 <div className="flex items-center space-x-2">
-                  <span className="text-red-600 dark:text-red-400">⚠️</span>
+                  <span className="text-red-600 dark:text-red-400 font-bold">!</span>
                   <p className="text-sm font-medium text-red-600 dark:text-red-400">{validationError || error}</p>
                 </div>
               </div>

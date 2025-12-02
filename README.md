@@ -1,4 +1,4 @@
-# 🏢 İK Kontrol Paneli
+# 🏢 VR Fast IK Kontrol Paneli
 
 Modern, kullanıcı dostu B2B İnsan Kaynakları Yönetim Sistemi. Bento Grid tasarım felsefesi ile oluşturulmuş, tam özellikli bir İK dashboard uygulaması.
 

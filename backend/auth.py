@@ -71,13 +71,13 @@ def verify_token(token: str) -> Optional[Dict]:
 
 def get_token_expiry(token: str) -> Optional[datetime]:
     """
-    Get the expiration time of a token
+    Verilen JWT token'ın sona erme zamanını döndürür.
     
     Args:
         token: JWT token string
     
     Returns:
-        Expiration datetime if valid, None if invalid
+        Geçerli ise token'ın bitiş zamanı (datetime), geçersizse None
     """
     payload = verify_token(token)
     if payload and "exp" in payload:
@@ -87,13 +87,13 @@ def get_token_expiry(token: str) -> Optional[datetime]:
 
 def is_token_expired(token: str) -> bool:
     """
-    Check if a token is expired
+    Verilen JWT token'ın süresinin dolup dolmadığını kontrol eder.
     
     Args:
         token: JWT token string
     
     Returns:
-        True if expired or invalid, False if still valid
+        Süresi dolmuş veya geçersizse True, halen geçerliyse False
     """
     expiry = get_token_expiry(token)
     if expiry is None:

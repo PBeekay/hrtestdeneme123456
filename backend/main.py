@@ -37,7 +37,13 @@ from database import (
     update_asset_assignment,
     return_asset,
     delete_asset_assignment,
-    get_asset_statistics
+    get_asset_statistics,
+    # Employee Management functions
+    get_all_employees,
+    get_employee_stats,
+    create_employee,
+    add_employee_note,
+    upload_employee_document
 )
 
 app = FastAPI(title="HR Dashboard API")
@@ -375,7 +381,7 @@ def create_leave_req(user_id: int, leave_request: LeaveRequestCreate):
 @app.get("/api/leave-requests")
 def get_leave_reqs(user_id: int, status: Optional[str] = None):
     """
-    Get leave requests for a user
+    Belirtilen kullanıcı için izin taleplerini döndürür
     """
     requests = get_leave_requests(user_id, status)
     return {"leaveRequests": requests}
@@ -412,7 +418,7 @@ class WidgetConfig(BaseModel):
 @app.get("/api/widgets")
 def get_widgets(user_id: int):
     """
-    Get user's widget configuration
+    Kullanıcının widget yapılandırmasını döndürür
     """
     widgets = get_user_widgets(user_id)
     return {"widgets": widgets}
@@ -421,7 +427,7 @@ def get_widgets(user_id: int):
 @app.put("/api/widgets")
 def update_widgets(user_id: int, widgets: List[WidgetConfig]):
     """
-    Update user's widget configuration
+    Kullanıcının widget yapılandırmasını günceller
     """
     widget_list = [w.dict() for w in widgets]
     success = update_user_widgets(user_id, widget_list)
@@ -441,13 +447,13 @@ def update_widgets(user_id: int, widgets: List[WidgetConfig]):
 @app.get("/api/work-schedule")
 def get_work_sched(user_id: int, days: int = 7):
     """
-    Get work schedule for employee
+    Çalışanın belirtilen gün sayısı için çalışma takvimini döndürür
     """
     schedule = get_work_schedule(user_id, days)
     return {"workSchedule": schedule}
 
 
-# ==================== ZİMMET (ASSET ASSIGNMENT) ====================
+# ==================== ZİMMET (ASSET ATAMA) ====================
 
 class AssetAssignmentCreate(BaseModel):
     employee_id: int
@@ -475,7 +481,7 @@ class AssetAssignmentUpdate(BaseModel):
 @app.get("/api/assets/categories")
 def get_categories(current_user: dict = Depends(get_current_user)):
     """
-    Get all asset categories
+    Tüm zimmet kategorilerini döndürür
     """
     logger.info(f"📦 Asset categories request | User: {current_user.get('sub')}")
     categories = get_asset_categories()
@@ -485,7 +491,7 @@ def get_categories(current_user: dict = Depends(get_current_user)):
 @app.get("/api/assets/my")
 def get_my_assets(current_user: dict = Depends(get_current_user), status: Optional[str] = None):
     """
-    Get current user's assets
+    Giriş yapmış kullanıcının zimmetli eşyalarını döndürür
     """
     user_id = current_user.get('user_id')
     username = current_user.get('sub')
@@ -511,7 +517,7 @@ def get_all_asset_assignments(
     status: Optional[str] = None
 ):
     """
-    Get all asset assignments (Admin only)
+    Tüm zimmet kayıtlarını döndürür (Sadece admin)
     """
     user_role = current_user.get('role')
     username = current_user.get('sub')
@@ -541,7 +547,7 @@ def create_asset(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Create a new asset assignment (Admin only)
+    Yeni zimmet kaydı oluşturur (Sadece admin)
     """
     user_role = current_user.get('role')
     username = current_user.get('sub')
@@ -588,7 +594,7 @@ def update_asset(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Update an asset assignment (Admin only)
+    Mevcut bir zimmet kaydını günceller (Sadece admin)
     """
     user_role = current_user.get('role')
     username = current_user.get('sub')
@@ -626,7 +632,7 @@ def return_asset_endpoint(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Mark an asset as returned (Admin only)
+    Zimmetli bir eşyayı iade edildi olarak işaretler (Sadece admin)
     """
     user_role = current_user.get('role')
     username = current_user.get('sub')
@@ -661,7 +667,7 @@ def delete_asset(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Delete an asset assignment (Admin only)
+    Bir zimmet kaydını siler (Sadece admin)
     """
     user_role = current_user.get('role')
     username = current_user.get('sub')
@@ -696,8 +702,8 @@ async def upload_file(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Upload a document file (Admin only)
-    Supported formats: PDF, DOC, DOCX, JPG, PNG
+    Doküman dosyası yükler (Sadece admin).
+    Desteklenen formatlar: PDF, DOC, DOCX, JPG, PNG
     """
     user_role = current_user.get('role')
     username = current_user.get('sub')
@@ -706,7 +712,7 @@ async def upload_file(
         logger.warning(f"❌ Unauthorized file upload attempt | User: {username}")
         raise HTTPException(status_code=403, detail="Bu işlem için yönetici yetkisi gerekli")
     
-    # Validate file type
+    # Dosya tipini doğrula
     allowed_extensions = {'.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png'}
     file_extension = Path(file.filename).suffix.lower()
     
@@ -716,7 +722,7 @@ async def upload_file(
             detail=f"Desteklenmeyen dosya formatı. İzin verilen: {', '.join(allowed_extensions)}"
         )
     
-    # Validate file size (max 10MB)
+    # Dosya boyutunu doğrula (maksimum 10MB)
     max_size = 10 * 1024 * 1024  # 10MB
     file.file.seek(0, 2)  # Seek to end
     file_size = file.file.tell()
@@ -726,16 +732,16 @@ async def upload_file(
         raise HTTPException(status_code=400, detail="Dosya boyutu maksimum 10MB olabilir")
     
     try:
-        # Generate unique filename
+        # Benzersiz bir dosya adı üret
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         safe_filename = f"{timestamp}_{file.filename}"
         file_path = UPLOAD_DIR / safe_filename
         
-        # Save file
+        # Dosyayı diske kaydet
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         
-        # Generate URL
+        # Erişim URL'sini üret
         file_url = f"/uploads/{safe_filename}"
         
         logger.info(f"📄 File uploaded | Filename: {safe_filename} | User: {username} | Size: {file_size} bytes")
@@ -750,6 +756,225 @@ async def upload_file(
     except Exception as e:
         log_error(e, f"File upload by {username}")
         raise HTTPException(status_code=500, detail="Dosya yüklenirken hata oluştu")
+
+
+# ==================== ÇALIŞAN YÖNETİMİ ====================
+
+class EmployeeCreate(BaseModel):
+    name: str
+    email: str
+    department: str
+    role: str
+    phone: Optional[str] = None
+    manager: Optional[str] = None
+    location: Optional[str] = None
+    startDate: str
+    status: str = 'active'
+
+
+class EmployeeNoteCreate(BaseModel):
+    note: str
+
+
+class EmployeeDocumentCreate(BaseModel):
+    title: str
+    type: str
+
+
+@app.get("/api/employees")
+def get_employees(current_user: dict = Depends(get_current_user)):
+    """
+    Tüm çalışanları döndürür (Sadece admin).
+    EmployeeManagement ekranında kullanılan çalışan profil listesini sağlar.
+    """
+    user_role = current_user.get('role')
+    username = current_user.get('sub')
+    
+    if user_role != 'admin':
+        logger.warning(f"❌ Unauthorized employee list access attempt | User: {username}")
+        raise HTTPException(status_code=403, detail="Bu işlem için yönetici yetkisi gerekli")
+    
+    logger.info(f"👥 Employees list request | Admin: {username}")
+    
+    try:
+        employees = get_all_employees()
+        logger.info(f"✅ Retrieved {len(employees)} employees | Admin: {username}")
+        return employees
+    except Exception as e:
+        log_error(e, f"Get employees by admin {username}")
+        raise HTTPException(status_code=500, detail="Çalışan listesi yüklenirken hata oluştu")
+
+
+@app.get("/api/employees/stats")
+def get_employee_statistics(current_user: dict = Depends(get_current_user)):
+    """
+    Çalışan istatistiklerini döndürür (Sadece admin).
+    Toplam çalışan, izinde olanlar, bekleyen belgeler ve onboarding sayılarını içerir.
+    """
+    user_role = current_user.get('role')
+    username = current_user.get('sub')
+    
+    if user_role != 'admin':
+        logger.warning(f"❌ Unauthorized employee stats access attempt | User: {username}")
+        raise HTTPException(status_code=403, detail="Bu işlem için yönetici yetkisi gerekli")
+    
+    logger.info(f"📊 Employee stats request | Admin: {username}")
+    
+    try:
+        stats = get_employee_stats()
+        logger.info(f"✅ Employee stats retrieved | Admin: {username}")
+        return stats
+    except Exception as e:
+        log_error(e, f"Get employee stats by admin {username}")
+        raise HTTPException(status_code=500, detail="İstatistikler yüklenirken hata oluştu")
+
+
+@app.post("/api/employees")
+def create_new_employee(
+    employee_data: EmployeeCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Yeni bir çalışan oluşturur (Sadece admin).
+    """
+    user_role = current_user.get('role')
+    username = current_user.get('sub')
+    admin_id = current_user.get('user_id')
+    
+    if user_role != 'admin':
+        logger.warning(f"❌ Unauthorized employee creation attempt | User: {username}")
+        raise HTTPException(status_code=403, detail="Bu işlem için yönetici yetkisi gerekli")
+    
+    logger.info(f"👤 Creating employee | Admin: {username} | Name: {employee_data.name}")
+    
+    try:
+        # Zorunlu alanları doğrula
+        if not employee_data.name or not employee_data.email or not employee_data.department or not employee_data.role:
+            raise HTTPException(status_code=400, detail="Ad, e-posta, departman ve rol zorunludur")
+        
+        # E-posta formatını doğrula
+        if '@' not in employee_data.email:
+            raise HTTPException(status_code=400, detail="Geçerli bir e-posta adresi giriniz")
+        
+        employee_id = create_employee(
+            name=employee_data.name,
+            email=employee_data.email,
+            department=employee_data.department,
+            role=employee_data.role,
+            phone=employee_data.phone,
+            manager=employee_data.manager,
+            location=employee_data.location,
+            start_date=employee_data.startDate,
+            status=employee_data.status
+        )
+        
+        if employee_id:
+            logger.info(f"✅ Employee created | ID: {employee_id} | Admin: {username}")
+            return {
+                "success": True,
+                "message": "Çalışan başarıyla oluşturuldu",
+                "employee_id": employee_id
+            }
+        else:
+            logger.warning(f"❌ Employee creation failed | Admin: {username}")
+            raise HTTPException(status_code=400, detail="Çalışan oluşturulamadı. E-posta veya kullanıcı adı zaten kullanılıyor olabilir.")
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error(e, f"Create employee by admin {username}")
+        raise HTTPException(status_code=500, detail="Çalışan oluşturulurken hata oluştu")
+
+
+@app.post("/api/employees/{employee_id}/notes")
+def add_note_to_employee(
+    employee_id: int,
+    note_data: EmployeeNoteCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Bir çalışana not ekler (Sadece admin).
+    """
+    user_role = current_user.get('role')
+    username = current_user.get('sub')
+    admin_id = current_user.get('user_id')
+    
+    if user_role != 'admin':
+        logger.warning(f"❌ Unauthorized note addition attempt | User: {username}")
+        raise HTTPException(status_code=403, detail="Bu işlem için yönetici yetkisi gerekli")
+    
+    if not note_data.note or not note_data.note.strip():
+        raise HTTPException(status_code=400, detail="Not içeriği boş olamaz")
+    
+    logger.info(f"📝 Adding note to employee {employee_id} | Admin: {username}")
+    
+    try:
+        note_id = add_employee_note(employee_id, note_data.note.strip(), admin_id)
+        
+        if note_id:
+            logger.info(f"✅ Note added | Note ID: {note_id} | Admin: {username}")
+            return {
+                "success": True,
+                "message": "Not kaydedildi",
+                "note_id": note_id
+            }
+        else:
+            logger.warning(f"❌ Note addition failed | Employee ID: {employee_id} | Admin: {username}")
+            raise HTTPException(status_code=500, detail="Not kaydedilemedi. employee_notes tablosu mevcut olmayabilir.")
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error(e, f"Add note to employee {employee_id} by admin {username}")
+        raise HTTPException(status_code=500, detail="Not eklenirken hata oluştu")
+
+
+@app.post("/api/employees/{employee_id}/documents")
+def upload_document_to_employee(
+    employee_id: int,
+    document_data: EmployeeDocumentCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Bir çalışana belge kaydı ekler (Sadece admin).
+    """
+    user_role = current_user.get('role')
+    username = current_user.get('sub')
+    admin_id = current_user.get('user_id')
+    
+    if user_role != 'admin':
+        logger.warning(f"❌ Unauthorized document upload attempt | User: {username}")
+        raise HTTPException(status_code=403, detail="Bu işlem için yönetici yetkisi gerekli")
+    
+    if not document_data.title or not document_data.title.strip():
+        raise HTTPException(status_code=400, detail="Belge başlığı gerekli")
+    
+    if document_data.type not in ['contract', 'performance', 'discipline', 'other']:
+        raise HTTPException(status_code=400, detail="Geçersiz belge tipi")
+    
+    logger.info(f"📄 Uploading document to employee {employee_id} | Admin: {username} | Title: {document_data.title}")
+    
+    try:
+        doc_id = upload_employee_document(
+            employee_id=employee_id,
+            title=document_data.title.strip(),
+            doc_type=document_data.type,
+            uploaded_by=admin_id
+        )
+        
+        if doc_id:
+            logger.info(f"✅ Document uploaded | Doc ID: {doc_id} | Admin: {username}")
+            return {
+                "success": True,
+                "message": "Belge yükleme kuyruğuna alındı",
+                "document_id": doc_id
+            }
+        else:
+            logger.warning(f"❌ Document upload failed | Employee ID: {employee_id} | Admin: {username}")
+            raise HTTPException(status_code=500, detail="Belge yüklenemedi. employee_documents tablosu mevcut olmayabilir.")
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error(e, f"Upload document to employee {employee_id} by admin {username}")
+        raise HTTPException(status_code=500, detail="Belge yüklenirken hata oluştu")
 
 
 if __name__ == "__main__":

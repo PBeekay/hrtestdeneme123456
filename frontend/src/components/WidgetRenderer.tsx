@@ -17,7 +17,6 @@ interface WidgetRendererProps {
   getPriorityIcon: (priority: string) => string;
   addToast: (message: string, type?: 'success' | 'error' | 'info' | 'warning') => void;
   setShowAssetManagement: (show: boolean) => void;
-  onNavigateToLeaves: () => void;
 }
 
 export const renderWidget = (props: WidgetRendererProps): React.ReactNode | null => {
@@ -34,7 +33,6 @@ export const renderWidget = (props: WidgetRendererProps): React.ReactNode | null
     getPriorityIcon,
     addToast,
     setShowAssetManagement,
-    onNavigateToLeaves,
   } = props;
 
   const { userInfo, leaveBalance, performance } = dashboardData;
@@ -72,38 +70,28 @@ export const renderWidget = (props: WidgetRendererProps): React.ReactNode | null
             <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full blur-xl"></div>
             <div className="h-full flex flex-col relative">
               <div className="flex items-center space-x-1.5 mb-2">
-                <span className="text-lg">🏖️</span>
                 <h2 className="text-sm font-semibold opacity-95">İzin Bakiyesi</h2>
               </div>
               <div className="flex-1 flex flex-col justify-center space-y-1.5">
                 <div className="flex justify-between items-center p-1.5 bg-white/10 rounded-lg backdrop-blur-sm hover:bg-white/20 transition-colors">
-                  <span className="text-[11px] font-medium flex items-center space-x-1">
-                    <span>🌴</span>
-                    <span>Yıllık</span>
+                  <span className="text-[11px] font-medium">
+                    Yıllık
                   </span>
                   <span className="text-xl font-bold">{leaveBalance.annual}</span>
                 </div>
                 <div className="flex justify-between items-center p-1.5 bg-white/10 rounded-lg backdrop-blur-sm hover:bg-white/20 transition-colors">
-                  <span className="text-[11px] font-medium flex items-center space-x-1">
-                    <span>🤒</span>
-                    <span>Hastalık</span>
+                  <span className="text-[11px] font-medium">
+                    Hastalık
                   </span>
                   <span className="text-xl font-bold">{leaveBalance.sick}</span>
                 </div>
                 <div className="flex justify-between items-center p-1.5 bg-white/10 rounded-lg backdrop-blur-sm hover:bg-white/20 transition-colors">
-                  <span className="text-[11px] font-medium flex items-center space-x-1">
-                    <span>⭐</span>
-                    <span>Kişisel</span>
+                  <span className="text-[11px] font-medium">
+                    Kişisel
                   </span>
                   <span className="text-xl font-bold">{leaveBalance.personal}</span>
                 </div>
               </div>
-              <button
-                onClick={onNavigateToLeaves}
-                className="mt-2 inline-flex items-center justify-center px-3 py-1.5 bg-white/15 hover:bg-white/25 rounded-xl text-[11px] font-semibold text-white transition-colors"
-              >
-                Detaylı gör →
-              </button>
             </div>
           </BentoCard>
         </div>
@@ -151,7 +139,6 @@ export const renderWidget = (props: WidgetRendererProps): React.ReactNode | null
           <BentoCard className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-100 dark:border-green-800 h-full" delay={delay}>
             <div className="h-full flex flex-col">
               <div className="flex items-center space-x-1.5 mb-2">
-                <span className="text-lg">📈</span>
                 <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">Performans</h2>
               </div>
               <div className="flex-1 space-y-2">
@@ -180,9 +167,6 @@ export const renderWidget = (props: WidgetRendererProps): React.ReactNode | null
                             <div className="absolute inset-0 bg-white/30 animate-shimmer"></div>
                           </div>
                         </div>
-                        {percentage >= 80 && (
-                          <span className="absolute -top-0.5 right-0 text-xs animate-bounce">🌟</span>
-                        )}
                       </div>
                     </div>
                   );
@@ -199,7 +183,6 @@ export const renderWidget = (props: WidgetRendererProps): React.ReactNode | null
           <BentoCard className="bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-900/20 dark:to-blue-900/20 border-sky-100 dark:border-sky-800 h-full" delay={delay}>
             <div className="h-full flex flex-col">
               <div className="flex items-center space-x-1.5 mb-2">
-                <span className="text-lg">📅</span>
                 <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">Takvim</h2>
               </div>
               <CalendarWidget onDateSelect={(date) => addToast(`${date.toLocaleDateString('tr-TR')} seçildi`, 'info')} />
@@ -215,7 +198,6 @@ export const renderWidget = (props: WidgetRendererProps): React.ReactNode | null
             <div className="h-full flex flex-col">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center space-x-1.5">
-                  <span className="text-lg">📋</span>
                   <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">Görev Detayları</h2>
                 </div>
                 <button 
@@ -253,7 +235,7 @@ export const renderWidget = (props: WidgetRendererProps): React.ReactNode | null
                           }`}>
                             {task.title}
                           </p>
-                          <span className="text-[9px] text-neutral-500 dark:text-neutral-400">📅 {task.dueDate}</span>
+                          <span className="text-[9px] text-neutral-500 dark:text-neutral-400">{task.dueDate}</span>
                         </div>
                       </div>
                       <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold border ${getPriorityColor(task.priority)} flex items-center space-x-0.5 shadow-sm flex-shrink-0`}>
@@ -296,7 +278,6 @@ export const renderWidget = (props: WidgetRendererProps): React.ReactNode | null
             <div className="h-full flex flex-col">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center space-x-1.5">
-                  <span className="text-lg">📢</span>
                   <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">Son Duyurular</h2>
                 </div>
                 <span className="inline-flex items-center space-x-1 text-[9px] text-neutral-500 dark:text-neutral-400">
@@ -314,15 +295,6 @@ export const renderWidget = (props: WidgetRendererProps): React.ReactNode | null
                   </div>
                 ) : (
                   filteredAnnouncements.map((announcement) => {
-                    const getCategoryIcon = (category: string) => {
-                      switch(category) {
-                        case 'Etkinlik': return '🎉';
-                        case 'Yan Haklar': return '💼';
-                        case 'Tatil': return '🎊';
-                        default: return '📢';
-                      }
-                    };
-                    
                     return (
                       <div
                         key={announcement.id}
@@ -330,7 +302,6 @@ export const renderWidget = (props: WidgetRendererProps): React.ReactNode | null
                         className="p-2.5 bg-gradient-to-br from-white to-neutral-50 dark:from-neutral-700/50 dark:to-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-600 hover:shadow-sm hover:scale-[1.01] hover:border-primary-200 dark:hover:border-primary-700 transition-all duration-300 cursor-pointer group"
                       >
                         <div className="flex items-start justify-between mb-1.5">
-                          <span className="text-xl">{getCategoryIcon(announcement.category)}</span>
                           <span className="text-[9px] text-neutral-500 dark:text-neutral-400">{announcement.date}</span>
                         </div>
                         <h3 className="text-sm font-bold text-neutral-900 dark:text-white mb-1 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">{announcement.title}</h3>

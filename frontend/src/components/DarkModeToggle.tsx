@@ -15,24 +15,24 @@ const DarkModeToggle: React.FC<DarkModeToggleProps> = ({ isDarkMode, toggleDarkM
       <div className="relative w-full h-full flex items-center justify-center">
         {/* Sun Icon */}
         <span
-          className={`absolute text-lg transform transition-all duration-500 ${
+          className={`absolute text-lg font-bold transform transition-all duration-500 ${
             isDarkMode
               ? 'rotate-90 scale-0 opacity-0'
               : 'rotate-0 scale-100 opacity-100'
           }`}
         >
-          ☀️
+          ☼
         </span>
         
         {/* Moon Icon */}
         <span
-          className={`absolute text-lg transform transition-all duration-500 ${
+          className={`absolute text-lg font-bold transform transition-all duration-500 ${
             isDarkMode
               ? 'rotate-0 scale-100 opacity-100'
               : '-rotate-90 scale-0 opacity-0'
           }`}
         >
-          🌙
+          ☾
         </span>
       </div>
       

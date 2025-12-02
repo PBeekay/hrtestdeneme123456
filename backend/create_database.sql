@@ -30,6 +30,71 @@ CREATE TABLE IF NOT EXISTS users (
     INDEX idx_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci;
 
+
+-- =========================================================
+-- ÇALIŞAN ÖZLÜK DOSYASI ALANLARI VE TABLOLARI
+-- (employee_schema.sql içeriği, yeni kurulumlar için entegre edildi)
+-- =========================================================
+
+-- Users tablosuna ek alanlar (telefon, yönetici, lokasyon, başlangıç tarihi, durum)
+ALTER TABLE users 
+ADD COLUMN IF NOT EXISTS phone VARCHAR(20) NULL AFTER email;
+
+ALTER TABLE users 
+ADD COLUMN IF NOT EXISTS manager INT NULL AFTER department;
+
+ALTER TABLE users 
+ADD COLUMN IF NOT EXISTS location VARCHAR(100) NULL AFTER manager;
+
+ALTER TABLE users 
+ADD COLUMN IF NOT EXISTS start_date DATE NULL AFTER location;
+
+ALTER TABLE users 
+ADD COLUMN IF NOT EXISTS status ENUM('active', 'on_leave', 'terminated') DEFAULT 'active' AFTER start_date;
+
+-- İndeksler
+CREATE INDEX IF NOT EXISTS idx_user_status ON users(status);
+CREATE INDEX IF NOT EXISTS idx_user_manager ON users(manager);
+
+-- Çalışan Notları Tablosu
+CREATE TABLE IF NOT EXISTS employee_notes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    employee_id INT NOT NULL,
+    note TEXT NOT NULL,
+    created_by INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (employee_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT,
+    INDEX idx_employee (employee_id),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci;
+
+-- Çalışan Belgeleri Tablosu
+CREATE TABLE IF NOT EXISTS employee_documents (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    employee_id INT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    type ENUM('contract', 'performance', 'discipline', 'other') NOT NULL DEFAULT 'other',
+    document_url VARCHAR(500) NULL,
+    document_filename VARCHAR(255) NULL,
+    status ENUM('approved', 'pending', 'rejected') DEFAULT 'pending',
+    uploaded_by INT NOT NULL,
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    approved_by INT NULL,
+    approved_at TIMESTAMP NULL,
+    rejection_reason TEXT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (employee_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE RESTRICT,
+    FOREIGN KEY (approved_by) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_employee (employee_id),
+    INDEX idx_status (status),
+    INDEX idx_type (type),
+    INDEX idx_uploaded_at (uploaded_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci;
+
 -- Leave balance table
 CREATE TABLE IF NOT EXISTS leave_balance (
     id INT AUTO_INCREMENT PRIMARY KEY,
