@@ -136,10 +136,18 @@ def get_user_by_id(user_id: int) -> Optional[Dict[str, Any]]:
     """
     try:
         with get_db_cursor() as cursor:
-            cursor.execute(
-                "SELECT id, username, full_name, email, role, department, avatar, user_role FROM users WHERE id = %s",
-                (user_id,)
-            )
+            # Try to get start_date if column exists
+            try:
+                cursor.execute(
+                    "SELECT id, username, full_name, email, role, department, avatar, user_role, start_date FROM users WHERE id = %s",
+                    (user_id,)
+                )
+            except:
+                # If start_date column doesn't exist, fallback to original query
+                cursor.execute(
+                    "SELECT id, username, full_name, email, role, department, avatar, user_role FROM users WHERE id = %s",
+                    (user_id,)
+                )
             return cursor.fetchone()
     except Exception as e:
         print(f"Get user error: {e}")
@@ -169,7 +177,8 @@ def get_user_dashboard_data(user_id: int) -> Optional[Dict[str, Any]]:
                 "department": user_info['department'],
                 "email": user_info['email'],
                 "avatar": user_info['avatar'],
-                "userRole": user_info.get('user_role', 'employee')  # ADD THIS LINE
+                "userRole": user_info.get('user_role', 'employee'),
+                "startDate": user_info.get('start_date').strftime('%Y-%m-%d') if user_info.get('start_date') else None
             },
             "leaveBalance": leave_balance,
             "pendingTasks": pending_tasks,
@@ -279,24 +288,88 @@ def get_active_announcements(limit: int = 10) -> List[Dict[str, Any]]:
     """
     try:
         with get_db_cursor() as cursor:
-            cursor.execute(
-                """
-                SELECT 
-                    id, 
-                    title, 
-                    category, 
-                    DATE_FORMAT(announcement_date, '%%Y-%%m-%%d') AS `date`
-                FROM announcements 
-                WHERE is_active = TRUE
-                ORDER BY announcement_date DESC
-                LIMIT %s
-                """,
-                (limit,)
-            )
+            # Try to get created_by if column exists
+            try:
+                cursor.execute(
+                    """
+                    SELECT 
+                        a.id, 
+                        a.title, 
+                        a.content as description,
+                        a.category, 
+                        DATE_FORMAT(a.announcement_date, '%%Y-%%m-%%d') AS `date`,
+                        COALESCE(u.full_name, 'Sistem') as author_name
+                    FROM announcements a
+                    LEFT JOIN users u ON a.created_by = u.id
+                    WHERE a.is_active = TRUE
+                    ORDER BY a.announcement_date DESC
+                    LIMIT %s
+                    """,
+                    (limit,)
+                )
+            except:
+                # Fallback if created_by column doesn't exist
+                cursor.execute(
+                    """
+                    SELECT 
+                        id, 
+                        title, 
+                        content as description,
+                        category, 
+                        DATE_FORMAT(announcement_date, '%%Y-%%m-%%d') AS `date`,
+                        'Sistem' as author_name
+                    FROM announcements 
+                    WHERE is_active = TRUE
+                    ORDER BY announcement_date DESC
+                    LIMIT %s
+                    """,
+                    (limit,)
+                )
             return cursor.fetchall()
     except Exception as e:
         print(f"Get announcements error: {e}")
         return []
+
+
+def create_announcement(
+    title: str,
+    content: str,
+    category: str,
+    announcement_date: str,
+    created_by: Optional[int] = None
+) -> Optional[int]:
+    """
+    Yeni bir duyuru oluşturur.
+    Returns the new announcement ID if successful
+    """
+    conn = get_db_connection()
+    if not conn:
+        return None
+    
+    try:
+        with conn.cursor() as cursor:
+            # Try to insert with created_by if column exists
+            try:
+                query = """
+                    INSERT INTO announcements (title, content, category, announcement_date, is_active, created_by)
+                    VALUES (%s, %s, %s, %s, TRUE, %s)
+                """
+                cursor.execute(query, (title, content, category, announcement_date, created_by))
+            except:
+                # Fallback if created_by column doesn't exist
+                query = """
+                    INSERT INTO announcements (title, content, category, announcement_date, is_active)
+                    VALUES (%s, %s, %s, %s, TRUE)
+                """
+                cursor.execute(query, (title, content, category, announcement_date))
+            conn.commit()
+            return cursor.lastrowid
+    except Exception as e:
+        print(f"Create announcement error: {e}")
+        conn.rollback()
+        return None
+    finally:
+        conn.close()
 
 
 # ==================== EMPLOYEE FEATURES ====================
@@ -483,7 +556,8 @@ def get_employee_dashboard_data(user_id: int) -> Optional[Dict[str, Any]]:
                 "department": user_info['department'],
                 "email": user_info['email'],
                 "avatar": user_info['avatar'],
-                "userRole": user_info.get('user_role', 'employee')
+                "userRole": user_info.get('user_role', 'employee'),
+                "startDate": user_info.get('start_date').strftime('%Y-%m-%d') if user_info.get('start_date') else None
             },
             "leaveBalance": get_leave_balance(user_id),
             "workSchedule": get_work_schedule(user_id, 7),

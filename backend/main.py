@@ -14,6 +14,7 @@ from slowapi.errors import RateLimitExceeded
 from auth import create_access_token, verify_token
 from logger import logger, log_auth_attempt, log_request, log_error
 from database import (
+    create_announcement,
     authenticate_user,
     get_user_dashboard_data,
     get_employee_dashboard_data,
@@ -43,6 +44,8 @@ from database import (
     get_employee_stats,
     create_employee,
     add_employee_note,
+    # Announcements
+    create_announcement,
     upload_employee_document
 )
 
@@ -776,6 +779,13 @@ class EmployeeNoteCreate(BaseModel):
     note: str
 
 
+class AnnouncementCreate(BaseModel):
+    title: str
+    content: str
+    category: str
+    announcement_date: str
+
+
 class EmployeeDocumentCreate(BaseModel):
     title: str
     type: str
@@ -883,6 +893,53 @@ def create_new_employee(
     except Exception as e:
         log_error(e, f"Create employee by admin {username}")
         raise HTTPException(status_code=500, detail="Çalışan oluşturulurken hata oluştu")
+
+
+@app.post("/api/announcements")
+def create_new_announcement(
+    announcement_data: AnnouncementCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Yeni bir duyuru oluşturur (Sadece admin).
+    """
+    user_role = current_user.get('role')
+    username = current_user.get('sub')
+    
+    if user_role != 'admin':
+        logger.warning(f"❌ Unauthorized announcement creation attempt | User: {username}")
+        raise HTTPException(status_code=403, detail="Bu işlem için yönetici yetkisi gerekli")
+    
+    logger.info(f"📢 Creating announcement | Admin: {username} | Title: {announcement_data.title}")
+    
+    try:
+        if not announcement_data.title or not announcement_data.category:
+            raise HTTPException(status_code=400, detail="Başlık ve kategori zorunludur")
+        
+        admin_id = current_user.get('user_id')
+        announcement_id = create_announcement(
+            title=announcement_data.title,
+            content=announcement_data.content or '',
+            category=announcement_data.category,
+            announcement_date=announcement_data.announcement_date,
+            created_by=admin_id
+        )
+        
+        if announcement_id:
+            logger.info(f"✅ Announcement created | ID: {announcement_id} | Admin: {username}")
+            return {
+                "success": True,
+                "message": "Duyuru başarıyla oluşturuldu",
+                "announcement_id": announcement_id
+            }
+        else:
+            logger.warning(f"❌ Announcement creation failed | Admin: {username}")
+            raise HTTPException(status_code=500, detail="Duyuru oluşturulamadı")
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error(e, f"Create announcement by admin {username}")
+        raise HTTPException(status_code=500, detail="Duyuru oluşturulurken hata oluştu")
 
 
 @app.post("/api/employees/{employee_id}/notes")
