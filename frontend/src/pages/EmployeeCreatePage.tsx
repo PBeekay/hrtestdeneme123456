@@ -75,15 +75,15 @@ const EmployeeCreatePage: React.FC<EmployeeCreatePageProps> = ({ userRole, onBac
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-blue-50 to-neutral-100 dark:from-neutral-900 dark:via-neutral-800 dark:to-neutral-900 p-4 md:p-8 flex items-center justify-center">
-        <div className="bg-white dark:bg-neutral-900 rounded-3xl p-8 border border-white/20 dark:border-neutral-800 max-w-lg text-center space-y-4">
+      <div className="min-h-screen bg-[#F0F0EB] dark:bg-[#0F172A] p-4 md:p-8 flex items-center justify-center">
+        <div className="bg-stone-50 dark:bg-neutral-900 rounded-lg p-8 border border-stone-200/50 dark:border-neutral-800 max-w-lg text-center space-y-4">
           <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Yetkisiz İşlem</h1>
           <p className="text-neutral-600 dark:text-neutral-400">
             Bu sayfayı yalnızca İK yöneticileri görüntüleyebilir. Lütfen yetkili hesabınızla giriş yapın.
           </p>
           <button
             onClick={onBack}
-            className="px-4 py-2 rounded-2xl bg-primary-600 text-white font-semibold hover:bg-primary-700 transition-colors"
+            className="px-4 py-2 rounded-md bg-primary-600 text-white font-semibold hover:bg-primary-700 transition-colors"
           >
             Geri Dön
           </button>
@@ -93,12 +93,12 @@ const EmployeeCreatePage: React.FC<EmployeeCreatePageProps> = ({ userRole, onBac
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-blue-50 to-neutral-100 dark:from-neutral-900 dark:via-neutral-800 dark:to-neutral-900 p-4 md:p-8">
+    <div className="min-h-screen bg-[#F0F0EB] dark:bg-[#0F172A] p-4 md:p-8">
       <div className="max-w-5xl mx-auto space-y-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <button
             onClick={onBack}
-            className="inline-flex items-center space-x-2 px-4 py-2 rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-white/70 dark:bg-neutral-800/70 shadow-sm text-sm font-semibold text-neutral-700 dark:text-neutral-200 hover:-translate-y-0.5 transition-all"
+            className="inline-flex items-center space-x-2 px-4 py-2 rounded-md border border-neutral-200 dark:border-neutral-700 bg-white/70 dark:bg-neutral-800/70 shadow-sm text-sm font-semibold text-neutral-700 dark:text-neutral-200 hover:-translate-y-0.5 transition-all"
           >
             <span>←</span>
             <span>Çalışan Listesine Dön</span>
@@ -108,7 +108,7 @@ const EmployeeCreatePage: React.FC<EmployeeCreatePageProps> = ({ userRole, onBac
           </div>
         </div>
 
-        <div className="bg-white dark:bg-neutral-900 rounded-3xl p-6 border border-white/30 dark:border-neutral-800 shadow-xl space-y-6">
+        <div className="bg-stone-50 dark:bg-neutral-900 rounded-lg p-6 border border-stone-200/50 dark:border-neutral-800 shadow-xl space-y-6">
           <div>
             <p className="text-sm uppercase tracking-wider text-primary-500 font-semibold">Yeni Çalışan</p>
             <h1 className="text-3xl font-bold text-neutral-900 dark:text-white mt-1">Çalışan Ekle</h1>
@@ -174,7 +174,7 @@ const EmployeeCreatePage: React.FC<EmployeeCreatePageProps> = ({ userRole, onBac
                   type="date"
                   value={formData.startDate}
                   onChange={(e) => updateField('startDate', e.target.value)}
-                  className="w-full rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-900 dark:text-white"
+                  className="w-full rounded-md border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-900 dark:text-white"
                   required
                 />
               </div>
@@ -183,7 +183,7 @@ const EmployeeCreatePage: React.FC<EmployeeCreatePageProps> = ({ userRole, onBac
                 <select
                   value={formData.status}
                   onChange={(e) => updateField('status', e.target.value)}
-                  className="w-full rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-900 dark:text-white"
+                  className="w-full rounded-md border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-900 dark:text-white"
                 >
                   <option value="active">Aktif</option>
                   <option value="on_leave">İzinde</option>
@@ -192,14 +192,14 @@ const EmployeeCreatePage: React.FC<EmployeeCreatePageProps> = ({ userRole, onBac
               </div>
             </div>
 
-            <div className="bg-primary-50 dark:bg-primary-900/20 rounded-2xl px-4 py-3 text-sm text-primary-700 dark:text-primary-200">
+            <div className="bg-primary-50 dark:bg-primary-900/20 rounded-md px-4 py-3 text-sm text-primary-700 dark:text-primary-200">
               Belgeler ve zimmetler otomatik atanmaz. Çalışan eklendikten sonra ilgili panellerden ek işlem yapabilirsiniz.
             </div>
 
             <button
               type="submit"
               disabled={submitting || !isFormValid}
-              className="w-full py-3 rounded-2xl bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold shadow-lg hover:shadow-xl hover:from-primary-600 hover:to-primary-700 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full py-3 rounded-md bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold shadow-lg hover:shadow-xl hover:from-primary-600 hover:to-primary-700 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {submitting ? 'Kaydediliyor...' : 'Çalışanı Kaydet'}
             </button>
@@ -230,7 +230,7 @@ const Field: React.FC<FieldProps> = ({ label, value, onChange, placeholder, requ
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-900 dark:text-white"
+      className="w-full rounded-md border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-900 dark:text-white"
       required={required}
     />
   </div>

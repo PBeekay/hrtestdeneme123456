@@ -74,7 +74,7 @@ const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onDateSelect }) => {
           onClick={() => handleDateClick(day)}
           className={`
             aspect-square flex items-center justify-center text-xs font-medium rounded-lg
-            transition-all duration-200 hover:scale-110
+            transition-all duration-100 hover:scale-110
             ${isToday 
               ? 'bg-primary-600 text-white font-bold shadow-lg' 
               : isSelected

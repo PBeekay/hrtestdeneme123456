@@ -16,16 +16,16 @@ const BentoCard: React.FC<BentoCardProps> = ({
   return (
     <div
       className={`
-        bg-white 
+        bg-stone-50/80
         dark:bg-neutral-800
-        rounded-xl 
+        rounded-lg 
         shadow-sm 
         ${interactive ? 'hover:shadow-md hover:scale-[1.005]' : ''} 
         transition-all 
-        duration-300 
+        duration-150 
         p-3
         border 
-        border-neutral-100
+        border-stone-200/50
         dark:border-neutral-700
         animate-fadeInUp
         ${className}

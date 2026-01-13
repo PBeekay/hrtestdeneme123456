@@ -8,8 +8,8 @@ interface ToastContainerProps {
 
 const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, removeToast }) => {
   return (
-    <div className="fixed top-4 right-4 z-50 flex flex-col space-y-3 pointer-events-none">
-      <div className="space-y-3 pointer-events-auto">
+    <div className="fixed top-4 right-4 z-50 flex flex-col space-y-2 pointer-events-none">
+      <div className="space-y-2 pointer-events-auto">
         {toasts.map((toast) => (
           <Toast key={toast.id} {...toast} onClose={removeToast} />
         ))}

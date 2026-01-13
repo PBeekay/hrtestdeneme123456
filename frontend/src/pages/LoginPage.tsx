@@ -54,7 +54,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, error }) => {
         </div>
 
         {/* Login Card */}
-        <div className="bg-white dark:bg-neutral-800 rounded-3xl shadow-2xl p-6 animate-fadeInUp border border-white/20">
+        <div className="bg-white dark:bg-neutral-800 rounded-lg shadow-2xl p-6 animate-fadeInUp border border-white/20">
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Username Field */}
             <div>
@@ -73,7 +73,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, error }) => {
                     setUsername(e.target.value);
                     setValidationError(null); // Clear validation error on change
                   }}
-                  className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 dark:bg-neutral-700 border-2 border-neutral-200 dark:border-neutral-600 rounded-xl focus:outline-none focus:border-primary-500 dark:focus:border-primary-400 transition-all text-neutral-900 dark:text-white placeholder-neutral-400"
+                  className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 dark:bg-neutral-700 border-2 border-neutral-200 dark:border-neutral-600 rounded-md focus:outline-none focus:border-primary-500 dark:focus:border-primary-400 transition-all text-neutral-900 dark:text-white placeholder-neutral-400"
                   placeholder="Kullanıcı adınızı girin"
                   minLength={3}
                   maxLength={50}
@@ -99,7 +99,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, error }) => {
                     setPassword(e.target.value);
                     setValidationError(null); // Clear validation error on change
                   }}
-                  className="w-full pl-10 pr-12 py-2.5 bg-neutral-50 dark:bg-neutral-700 border-2 border-neutral-200 dark:border-neutral-600 rounded-xl focus:outline-none focus:border-primary-500 dark:focus:border-primary-400 transition-all text-neutral-900 dark:text-white placeholder-neutral-400"
+                  className="w-full pl-10 pr-12 py-2.5 bg-neutral-50 dark:bg-neutral-700 border-2 border-neutral-200 dark:border-neutral-600 rounded-md focus:outline-none focus:border-primary-500 dark:focus:border-primary-400 transition-all text-neutral-900 dark:text-white placeholder-neutral-400"
                   placeholder="Şifrenizi girin"
                   minLength={6}
                   maxLength={100}
@@ -117,7 +117,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, error }) => {
 
             {/* Error Message */}
             {(error || validationError) && (
-              <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-xl p-3 animate-shake">
+              <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-md p-3 animate-shake">
                 <div className="flex items-center space-x-2">
                   <span className="text-red-600 dark:text-red-400 font-bold">!</span>
                   <p className="text-sm font-medium text-red-600 dark:text-red-400">{validationError || error}</p>
@@ -128,13 +128,13 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, error }) => {
             {/* Login Button */}
             <button
               type="submit"
-              className="w-full bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white font-bold py-2.5 px-4 rounded-xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg"
+              className="w-full bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white font-bold py-2.5 px-4 rounded-md transition-all duration-150 transform hover:scale-[1.02] hover:shadow-lg"
             >
               Giriş Yap
             </button>
 
             {/* Info */}
-            <div className="mt-4 p-3 bg-primary-50 dark:bg-primary-900/20 rounded-xl">
+            <div className="mt-4 p-3 bg-primary-50 dark:bg-primary-900/20 rounded-md">
               <p className="text-xs text-center text-primary-700 dark:text-primary-300">
                 <span className="font-semibold">Demo Hesap:</span><br/>
                 Kullanıcı: <span className="font-mono">ikadmin</span><br/>

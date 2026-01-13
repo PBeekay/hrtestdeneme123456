@@ -65,7 +65,7 @@ class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-red-100 dark:from-red-900/20 dark:via-orange-900/20 dark:to-red-900/20 flex items-center justify-center p-4">
-          <div className="max-w-2xl w-full bg-white dark:bg-neutral-800 rounded-3xl shadow-2xl p-8 animate-fadeIn">
+          <div className="max-w-2xl w-full bg-white dark:bg-neutral-800 rounded-lg shadow-2xl p-8 animate-fadeIn">
             {/* Error Icon */}
             <div className="text-center mb-6">
               <div className="inline-flex items-center justify-center w-20 h-20 bg-red-100 dark:bg-red-900/30 rounded-full mb-4">
@@ -81,7 +81,7 @@ class ErrorBoundary extends Component<Props, State> {
 
             {/* Error Details (Development Mode) */}
             {process.env.NODE_ENV === 'development' && this.state.error && (
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 mb-6">
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4 mb-6">
                 <h3 className="font-semibold text-red-800 dark:text-red-300 mb-2 flex items-center">
                   <span className="mr-2">🐛</span>
                   Hata Detayları (Sadece Geliştirme Modunda)
@@ -102,14 +102,14 @@ class ErrorBoundary extends Component<Props, State> {
             <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={this.handleReload}
-                className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl transition-colors flex items-center justify-center space-x-2"
+                className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-md transition-colors flex items-center justify-center space-x-2"
               >
                 <span>🔄</span>
                 <span>Sayfayı Yenile</span>
               </button>
               <button
                 onClick={this.handleReset}
-                className="flex-1 px-6 py-3 bg-neutral-200 hover:bg-neutral-300 dark:bg-neutral-700 dark:hover:bg-neutral-600 text-neutral-800 dark:text-white font-semibold rounded-xl transition-colors flex items-center justify-center space-x-2"
+                className="flex-1 px-6 py-3 bg-neutral-200 hover:bg-neutral-300 dark:bg-neutral-700 dark:hover:bg-neutral-600 text-neutral-800 dark:text-white font-semibold rounded-md transition-colors flex items-center justify-center space-x-2"
               >
                 <span>Tekrar Dene</span>
               </button>

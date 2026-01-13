@@ -1,5 +1,5 @@
 import React from 'react';
-import { WorkDay } from '../types';
+import { WorkDay } from '../../types';
 
 interface WorkScheduleCardProps {
   workSchedule: WorkDay[];
@@ -53,7 +53,7 @@ const WorkScheduleCard: React.FC<WorkScheduleCardProps> = ({ workSchedule }) => 
         {workSchedule.map((day, index) => (
           <div
             key={index}
-            className="p-2.5 bg-gradient-to-r from-neutral-50 to-neutral-100 dark:from-neutral-700/50 dark:to-neutral-800/50 rounded-xl hover:shadow-sm transition-all border border-neutral-200 dark:border-neutral-600"
+            className="p-2.5 bg-gradient-to-r from-neutral-50 to-neutral-100 dark:from-neutral-700/50 dark:to-neutral-800/50 rounded-md hover:shadow-sm transition-all border border-neutral-200 dark:border-neutral-600"
           >
             <div className="flex items-center justify-between">
               <div className="flex-1">

@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback } from 'react';
 import { Task, Announcement } from '../types';
 
 export const useSearch = () => {
@@ -10,14 +10,14 @@ export const useSearch = () => {
 
   const filterTasks = useCallback((tasks: Task[]) => {
     if (!searchQuery) return tasks;
-    return tasks.filter(task => 
+    return tasks.filter(task =>
       task.title.toLowerCase().includes(searchQuery)
     );
   }, [searchQuery]);
 
   const filterAnnouncements = useCallback((announcements: Announcement[]) => {
     if (!searchQuery) return announcements;
-    return announcements.filter(announcement => 
+    return announcements.filter(announcement =>
       announcement.title.toLowerCase().includes(searchQuery) ||
       announcement.category.toLowerCase().includes(searchQuery)
     );

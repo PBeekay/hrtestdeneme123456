@@ -11,10 +11,14 @@ export const useDashboard = (isAuthenticated: boolean) => {
   const hasInitialFetch = useRef(false);
 
   useEffect(() => {
-    if (!isAuthenticated || hasInitialFetch.current) {
-      if (!isAuthenticated) {
-        setLoading(false);
-      }
+    if (!isAuthenticated) {
+      setDashboardData(null);
+      setLoading(true);
+      hasInitialFetch.current = false;
+      return;
+    }
+
+    if (hasInitialFetch.current) {
       return;
     }
 

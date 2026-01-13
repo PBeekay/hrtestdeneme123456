@@ -29,7 +29,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, placeholder = 'Görevle
         value={query}
         onChange={handleChange}
         placeholder={placeholder}
-        className="w-full pl-10 pr-10 py-2 text-sm bg-white dark:bg-neutral-800 border-2 border-neutral-200 dark:border-neutral-700 rounded-xl focus:outline-none focus:border-primary-500 dark:focus:border-primary-400 transition-all duration-300 text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 shadow-sm hover:shadow-md"
+        className="w-full pl-10 pr-10 py-2 text-sm bg-stone-50/90 dark:bg-neutral-800 border-2 border-stone-200/50 dark:border-neutral-700 rounded-md focus:outline-none focus:border-primary-500 dark:focus:border-primary-400 transition-all duration-150 text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 shadow-sm hover:shadow-md"
       />
       {query && (
         <button

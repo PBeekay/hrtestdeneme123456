@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LeaveRequest } from '../types';
+import { LeaveRequest } from '../../types';
 
 interface LeaveRequestCardProps {
   leaveRequests: LeaveRequest[];
@@ -52,7 +52,7 @@ const LeaveRequestCard: React.FC<LeaveRequestCardProps> = ({ leaveRequests, onCr
     const start = new Date(formData.startDate);
     const end = new Date(formData.endDate);
     const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    
+
     onCreateRequest({
       leaveType: formData.leaveType,
       startDate: formData.startDate,
@@ -60,7 +60,7 @@ const LeaveRequestCard: React.FC<LeaveRequestCardProps> = ({ leaveRequests, onCr
       reason: formData.reason,
       totalDays
     } as Partial<LeaveRequest>);
-    
+
     setFormData({ leaveType: 'annual', startDate: '', endDate: '', reason: '' });
     setShowForm(false);
   };
@@ -81,10 +81,10 @@ const LeaveRequestCard: React.FC<LeaveRequestCardProps> = ({ leaveRequests, onCr
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="mb-3 p-3 bg-primary-50 dark:bg-primary-900/20 rounded-xl space-y-2">
+        <form onSubmit={handleSubmit} className="mb-3 p-3 bg-primary-50 dark:bg-primary-900/20 rounded-md space-y-2">
           <select
             value={formData.leaveType}
-            onChange={(e) => setFormData({...formData, leaveType: e.target.value as 'annual' | 'sick' | 'personal'})}
+            onChange={(e) => setFormData({ ...formData, leaveType: e.target.value as 'annual' | 'sick' | 'personal' })}
             className="w-full px-2 py-1.5 text-xs bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 rounded-lg text-neutral-900 dark:text-white"
             required
           >
@@ -96,21 +96,21 @@ const LeaveRequestCard: React.FC<LeaveRequestCardProps> = ({ leaveRequests, onCr
             <input
               type="date"
               value={formData.startDate}
-              onChange={(e) => setFormData({...formData, startDate: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
               className="px-2 py-1.5 text-xs bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 rounded-lg text-neutral-900 dark:text-white"
               required
             />
             <input
               type="date"
               value={formData.endDate}
-              onChange={(e) => setFormData({...formData, endDate: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
               className="px-2 py-1.5 text-xs bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 rounded-lg text-neutral-900 dark:text-white"
               required
             />
           </div>
           <textarea
             value={formData.reason}
-            onChange={(e) => setFormData({...formData, reason: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
             placeholder="Neden..."
             className="w-full px-2 py-1.5 text-xs bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 rounded-lg text-neutral-900 dark:text-white resize-none"
             rows={2}
@@ -134,7 +134,7 @@ const LeaveRequestCard: React.FC<LeaveRequestCardProps> = ({ leaveRequests, onCr
           leaveRequests.map((request) => (
             <div
               key={request.id}
-              className="p-2.5 bg-gradient-to-r from-neutral-50 to-neutral-100 dark:from-neutral-700/50 dark:to-neutral-800/50 rounded-xl border border-neutral-200 dark:border-neutral-600"
+              className="p-2.5 bg-gradient-to-r from-neutral-50 to-neutral-100 dark:from-neutral-700/50 dark:to-neutral-800/50 rounded-md border border-neutral-200 dark:border-neutral-600"
             >
               <div className="flex items-start justify-between mb-1.5">
                 <div className="flex-1">

@@ -19,12 +19,14 @@ from database import (
     get_user_dashboard_data,
     get_employee_dashboard_data,
     create_session,
+    get_reminders,
     validate_session,
     delete_session,
     update_task_status,
     test_connection,
     get_work_schedule,
     get_leave_requests,
+    get_all_leave_requests,
     create_leave_request,
     approve_leave_request,
     get_user_widgets,
@@ -38,15 +40,33 @@ from database import (
     update_asset_assignment,
     return_asset,
     delete_asset_assignment,
-    get_asset_statistics,
     # Employee Management functions
     get_all_employees,
     get_employee_stats,
     create_employee,
-    add_employee_note,
+    update_employee,
+    delete_employee,
+
     # Announcements
     create_announcement,
-    upload_employee_document
+    upload_employee_document,
+    update_employee_document,
+    delete_employee_document,
+    approve_employee_document,
+    # User Management
+    get_all_users,
+    reset_user_password,
+    # Department Management
+    get_all_departments,
+    # System Settings
+    get_system_settings,
+    update_system_settings,
+    # Calendar & Reminders
+    get_personal_reminders,
+    create_personal_reminder,
+    update_personal_reminder,
+    delete_personal_reminder,
+    get_upcoming_team_events
 )
 
 app = FastAPI(title="HR Dashboard API")
@@ -241,11 +261,15 @@ def login(request: Request, credentials: LoginRequest):
     user = authenticate_user(credentials.username, credentials.password)
     
     if user:
+        # Determine application role for authorization checks
+        # Prefer the explicit user_role column; fall back to 'employee'
+        app_role = user.get('user_role', 'employee')
+
         # Generate JWT token with expiration (30 minutes)
         token_data = {
             "sub": user['username'],
             "user_id": user['id'],
-            "role": user.get('user_role', 'employee')
+            "role": app_role
         }
         token = create_access_token(token_data)
         
@@ -350,7 +374,7 @@ class LeaveRequestCreate(BaseModel):
     leaveType: str
     startDate: str
     endDate: str
-    totalDays: int
+    totalDays: float
     reason: str
 
 
@@ -382,11 +406,36 @@ def create_leave_req(user_id: int, leave_request: LeaveRequestCreate):
 
 
 @app.get("/api/leave-requests")
-def get_leave_reqs(user_id: int, status: Optional[str] = None):
+def get_leave_reqs(
+    user_id: Optional[int] = None, 
+    status: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
     """
-    Belirtilen kullanıcı için izin taleplerini döndürür
+    Belirtilen kullanıcı için izin taleplerini döndürür.
+    Admin ise tüm bekleyen talepleri veya user_id belirtilmişse o kullanıcının taleplerini görebilir.
     """
-    requests = get_leave_requests(user_id, status)
+    requester_role = current_user.get('role', 'employee')
+    requester_id = current_user.get('user_id')
+    
+    # If user_id is not provided, default to current user
+    target_user_id = user_id if user_id else requester_id
+
+    # If Admin, fetch all requests if no specific user target is meant for personal view
+    # Logic: 
+    # - If Admin and NO user_id param -> Get ALL requests (for Admin Panel)
+    # - If Admin and user_id param -> Get that user's requests
+    # - If Employee -> Get ONLY own requests
+    
+    if requester_role == 'admin' and not user_id:
+        requests = get_all_leave_requests(status)
+    else:
+        # Security check: Employees can only view their own requests
+        if requester_role != 'admin' and target_user_id != requester_id:
+             raise HTTPException(status_code=403, detail="Başkasının izinlerini görüntüleme yetkiniz yok")
+        
+        requests = get_leave_requests(target_user_id, status)
+
     return {"leaveRequests": requests}
 
 
@@ -786,6 +835,23 @@ class AnnouncementCreate(BaseModel):
     announcement_date: str
 
 
+class EmployeeUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    department: Optional[str] = None
+    role: Optional[str] = None
+    phone: Optional[str] = None
+    manager: Optional[int] = None
+    location: Optional[str] = None
+    startDate: Optional[str] = None
+    status: Optional[str] = None
+
+
+class DocumentApproval(BaseModel):
+    approved: bool
+    rejection_reason: Optional[str] = None
+
+
 class EmployeeDocumentCreate(BaseModel):
     title: str
     type: str
@@ -895,6 +961,98 @@ def create_new_employee(
         raise HTTPException(status_code=500, detail="Çalışan oluşturulurken hata oluştu")
 
 
+@app.put("/api/employees/{employee_id}")
+def update_employee_info(
+    employee_id: int,
+    employee_data: EmployeeUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Bir çalışanın bilgilerini günceller (Sadece admin).
+    """
+    user_role = current_user.get('role')
+    username = current_user.get('sub')
+    
+    if user_role != 'admin':
+        logger.warning(f"❌ Unauthorized employee update attempt | User: {username}")
+        raise HTTPException(status_code=403, detail="Bu işlem için yönetici yetkisi gerekli")
+    
+    logger.info(f"✏️ Updating employee {employee_id} | Admin: {username}")
+    
+    try:
+        success = update_employee(
+            employee_id=employee_id,
+            name=employee_data.name,
+            email=employee_data.email,
+            department=employee_data.department,
+            role=employee_data.role,
+            phone=employee_data.phone,
+            manager=employee_data.manager,
+            location=employee_data.location,
+            start_date=employee_data.startDate,
+            status=employee_data.status
+        )
+        
+        if success:
+            logger.info(f"✅ Employee updated | ID: {employee_id} | Admin: {username}")
+            return {
+                "success": True,
+                "message": "Çalışan bilgileri güncellendi"
+            }
+        else:
+            logger.warning(f"❌ Employee update failed | ID: {employee_id} | Admin: {username}")
+            raise HTTPException(status_code=400, detail="Çalışan güncellenemedi. E-posta zaten kullanılıyor olabilir.")
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error(e, f"Update employee {employee_id} by admin {username}")
+        raise HTTPException(status_code=500, detail="Çalışan güncellenirken hata oluştu")
+
+
+@app.delete("/api/employees/{employee_id}")
+def delete_employee_info(
+    employee_id: int,
+    deactivate_only: bool = True,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Bir çalışanı siler veya devre dışı bırakır (Sadece admin).
+    deactivate_only=True ise sadece status'u 'terminated' yapar.
+    deactivate_only=False ise kullanıcıyı tamamen siler.
+    """
+    user_role = current_user.get('role')
+    username = current_user.get('sub')
+    
+    if user_role != 'admin':
+        logger.warning(f"❌ Unauthorized employee delete attempt | User: {username}")
+        raise HTTPException(status_code=403, detail="Bu işlem için yönetici yetkisi gerekli")
+    
+    # Prevent deleting yourself
+    if employee_id == current_user.get('user_id'):
+        raise HTTPException(status_code=400, detail="Kendi hesabınızı silemezsiniz")
+    
+    action = "deactivate" if deactivate_only else "delete"
+    logger.info(f"🗑️ {action.capitalize()}ing employee {employee_id} | Admin: {username}")
+    
+    try:
+        success = delete_employee(employee_id, deactivate_only)
+        
+        if success:
+            logger.info(f"✅ Employee {action}ed | ID: {employee_id} | Admin: {username}")
+            return {
+                "success": True,
+                "message": f"Çalışan {'devre dışı bırakıldı' if deactivate_only else 'silindi'}"
+            }
+        else:
+            logger.warning(f"❌ Employee {action} failed | ID: {employee_id} | Admin: {username}")
+            raise HTTPException(status_code=500, detail=f"Çalışan {action} edilemedi")
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error(e, f"{action.capitalize()} employee {employee_id} by admin {username}")
+        raise HTTPException(status_code=500, detail=f"Çalışan {action} edilirken hata oluştu")
+
+
 @app.post("/api/announcements")
 def create_new_announcement(
     announcement_data: AnnouncementCreate,
@@ -921,7 +1079,7 @@ def create_new_announcement(
             title=announcement_data.title,
             content=announcement_data.content or '',
             category=announcement_data.category,
-            announcement_date=announcement_data.announcement_date,
+            announcement_date=datetime.now().strftime('%Y-%m-%d %H:%M'),
             created_by=admin_id
         )
         
@@ -942,46 +1100,34 @@ def create_new_announcement(
         raise HTTPException(status_code=500, detail="Duyuru oluşturulurken hata oluştu")
 
 
-@app.post("/api/employees/{employee_id}/notes")
-def add_note_to_employee(
-    employee_id: int,
-    note_data: EmployeeNoteCreate,
-    current_user: dict = Depends(get_current_user)
-):
+
+
+
+@app.get("/api/reminders")
+def get_reminders_endpoint(current_user: dict = Depends(get_current_user)):
     """
-    Bir çalışana not ekler (Sadece admin).
+    Admin için hatırlatıcıları döndürür (deneme süresi, doğum günleri, vergi ödemeleri).
     """
     user_role = current_user.get('role')
     username = current_user.get('sub')
     admin_id = current_user.get('user_id')
     
     if user_role != 'admin':
-        logger.warning(f"❌ Unauthorized note addition attempt | User: {username}")
+        logger.warning(f"❌ Unauthorized reminders access attempt | User: {username}")
         raise HTTPException(status_code=403, detail="Bu işlem için yönetici yetkisi gerekli")
     
-    if not note_data.note or not note_data.note.strip():
-        raise HTTPException(status_code=400, detail="Not içeriği boş olamaz")
-    
-    logger.info(f"📝 Adding note to employee {employee_id} | Admin: {username}")
+    logger.info(f"🔔 Getting reminders | Admin: {username}")
     
     try:
-        note_id = add_employee_note(employee_id, note_data.note.strip(), admin_id)
-        
-        if note_id:
-            logger.info(f"✅ Note added | Note ID: {note_id} | Admin: {username}")
-            return {
-                "success": True,
-                "message": "Not kaydedildi",
-                "note_id": note_id
-            }
-        else:
-            logger.warning(f"❌ Note addition failed | Employee ID: {employee_id} | Admin: {username}")
-            raise HTTPException(status_code=500, detail="Not kaydedilemedi. employee_notes tablosu mevcut olmayabilir.")
-    except HTTPException:
-        raise
+        reminders = get_reminders(admin_id)
+        logger.info(f"✅ Retrieved {len(reminders)} reminders | Admin: {username}")
+        return reminders
     except Exception as e:
-        log_error(e, f"Add note to employee {employee_id} by admin {username}")
-        raise HTTPException(status_code=500, detail="Not eklenirken hata oluştu")
+        log_error(e, f"Get reminders by admin {username}")
+        raise HTTPException(status_code=500, detail="Hatırlatıcılar yüklenirken hata oluştu")
+
+
+
 
 
 @app.post("/api/employees/{employee_id}/documents")
@@ -1032,6 +1178,505 @@ def upload_document_to_employee(
     except Exception as e:
         log_error(e, f"Upload document to employee {employee_id} by admin {username}")
         raise HTTPException(status_code=500, detail="Belge yüklenirken hata oluştu")
+
+
+@app.put("/api/employees/{employee_id}/documents/{document_id}")
+def update_document(
+    employee_id: int,
+    document_id: int,
+    document_data: EmployeeDocumentCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Bir belge kaydını günceller (Sadece admin).
+    """
+    user_role = current_user.get('role')
+    username = current_user.get('sub')
+    
+    if user_role != 'admin':
+        logger.warning(f"❌ Unauthorized document update attempt | User: {username}")
+        raise HTTPException(status_code=403, detail="Bu işlem için yönetici yetkisi gerekli")
+    
+    if not document_data.title or not document_data.title.strip():
+        raise HTTPException(status_code=400, detail="Belge başlığı gerekli")
+    
+    if document_data.type not in ['contract', 'performance', 'discipline', 'other']:
+        raise HTTPException(status_code=400, detail="Geçersiz belge tipi")
+    
+    logger.info(f"📝 Updating document {document_id} for employee {employee_id} | Admin: {username}")
+    
+    try:
+        success = update_employee_document(
+            document_id=document_id,
+            title=document_data.title.strip(),
+            doc_type=document_data.type
+        )
+        
+        if success:
+            logger.info(f"✅ Document updated | Doc ID: {document_id} | Admin: {username}")
+            return {
+                "success": True,
+                "message": "Belge güncellendi"
+            }
+        else:
+            logger.warning(f"❌ Document update failed | Doc ID: {document_id} | Admin: {username}")
+            raise HTTPException(status_code=500, detail="Belge güncellenemedi")
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error(e, f"Update document {document_id} by admin {username}")
+        raise HTTPException(status_code=500, detail="Belge güncellenirken hata oluştu")
+
+
+@app.delete("/api/employees/{employee_id}/documents/{document_id}")
+def delete_document(
+    employee_id: int,
+    document_id: int,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Bir belge kaydını siler (Sadece admin).
+    """
+    user_role = current_user.get('role')
+    username = current_user.get('sub')
+    
+    if user_role != 'admin':
+        logger.warning(f"❌ Unauthorized document delete attempt | User: {username}")
+        raise HTTPException(status_code=403, detail="Bu işlem için yönetici yetkisi gerekli")
+    
+    logger.info(f"🗑️ Deleting document {document_id} for employee {employee_id} | Admin: {username}")
+    
+    try:
+        success = delete_employee_document(document_id)
+        
+        if success:
+            logger.info(f"✅ Document deleted | Doc ID: {document_id} | Admin: {username}")
+            return {
+                "success": True,
+                "message": "Belge silindi"
+            }
+        else:
+            logger.warning(f"❌ Document delete failed | Doc ID: {document_id} | Admin: {username}")
+            raise HTTPException(status_code=500, detail="Belge silinemedi")
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error(e, f"Delete document {document_id} by admin {username}")
+        raise HTTPException(status_code=500, detail="Belge silinirken hata oluştu")
+
+
+
+
+@app.put("/api/employees/{employee_id}/documents/{document_id}/approve")
+def approve_document(
+    employee_id: int,
+    document_id: int,
+    approval_data: DocumentApproval,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Bir belgeyi onaylar veya reddeder (Sadece admin).
+    """
+    user_role = current_user.get('role')
+    username = current_user.get('sub')
+    admin_id = current_user.get('user_id')
+    
+    if user_role != 'admin':
+        logger.warning(f"❌ Unauthorized document approval attempt | User: {username}")
+        raise HTTPException(status_code=403, detail="Bu işlem için yönetici yetkisi gerekli")
+    
+    if not approval_data.approved and not approval_data.rejection_reason:
+        raise HTTPException(status_code=400, detail="Reddedilen belgeler için red nedeni gerekli")
+    
+    action = "approve" if approval_data.approved else "reject"
+    logger.info(f"✅ {action.capitalize()}ing document {document_id} for employee {employee_id} | Admin: {username}")
+    
+    try:
+        success = approve_employee_document(
+            document_id=document_id,
+            approved_by=admin_id,
+            approved=approval_data.approved,
+            rejection_reason=approval_data.rejection_reason
+        )
+        
+        if success:
+            logger.info(f"✅ Document {action}d | Doc ID: {document_id} | Admin: {username}")
+            return {
+                "success": True,
+                "message": f"Belge {'onaylandı' if approval_data.approved else 'reddedildi'}"
+            }
+        else:
+            logger.warning(f"❌ Document {action} failed | Doc ID: {document_id} | Admin: {username}")
+            raise HTTPException(status_code=500, detail=f"Belge {action} edilemedi")
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error(e, f"{action.capitalize()} document {document_id} by admin {username}")
+        raise HTTPException(status_code=500, detail=f"Belge {action} edilirken hata oluştu")
+
+
+# ==================== CALENDAR & REMINDERS ENDPOINTS ====================
+
+class PersonalReminderCreate(BaseModel):
+    title: str
+    date: str
+
+class PersonalReminderUpdate(BaseModel):
+    is_completed: bool
+
+@app.get("/api/reminders/personal")
+def get_personal_reminders_endpoint(current_user: dict = Depends(get_current_user)):
+    """
+    Kullanıcının kişisel hatırlatıcılarını getirir
+    """
+    user_id = current_user.get('user_id')
+    return get_personal_reminders(user_id)
+
+@app.post("/api/reminders/personal")
+def create_personal_reminder_endpoint(
+    reminder: PersonalReminderCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Yeni kişisel hatırlatıcı oluşturur
+    """
+    user_id = current_user.get('user_id')
+    reminder_id = create_personal_reminder(user_id, reminder.title, reminder.date)
+    if reminder_id:
+        return {"success": True, "id": reminder_id}
+    else:
+        raise HTTPException(status_code=500, detail="Hatırlatıcı oluşturulamadı")
+
+@app.put("/api/reminders/personal/{reminder_id}")
+def update_personal_reminder_endpoint(
+    reminder_id: int,
+    status: PersonalReminderUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Hatırlatıcı durumunu günceller (tamamlandı/tamamlanmadı)
+    """
+    success = update_personal_reminder(reminder_id, status.is_completed)
+    if success:
+        return {"success": True}
+    else:
+        raise HTTPException(status_code=404, detail="Hatırlatıcı bulunamadı")
+
+@app.delete("/api/reminders/personal/{reminder_id}")
+def delete_personal_reminder_endpoint(
+    reminder_id: int,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Hatırlatıcıyı siler
+    """
+    success = delete_personal_reminder(reminder_id)
+    if success:
+        return {"success": True}
+    else:
+        raise HTTPException(status_code=404, detail="Hatırlatıcı bulunamadı")
+
+@app.get("/api/events/upcoming")
+def get_upcoming_events_endpoint(current_user: dict = Depends(get_current_user)):
+    """
+    Yaklaşan doğum günleri ve iş yıldönümlerini getirir
+    """
+    return get_upcoming_team_events()
+
+@app.get("/api/calendar/events")
+def get_calendar_events_endpoint(current_user: dict = Depends(get_current_user)):
+    """
+    Takvim etkinliklerini getirir (İzinler ve Hatırlatıcılar)
+    """
+    user_id = current_user.get('user_id')
+    
+    try:
+        # Get leaves
+        leaves = get_leave_requests(user_id, status='approved')
+        
+        # Get personal reminders
+        reminders = get_personal_reminders(user_id)
+        
+        # Format for FullCalendar
+        events = []
+        
+        for leave in leaves:
+            # Yapıya göre startDate / start_date kontrolü
+            start = leave.get('startDate') or leave.get('start_date')
+            end = leave.get('endDate') or leave.get('end_date')
+            
+            events.append({
+                "id": f"leave-{leave['id']}",
+                "title": f"İzin: {leave['leaveType']}",
+                "start": start,
+                "end": end,
+                "backgroundColor": "#F59E0B", # Amber
+                "borderColor": "#D97706",
+                "extendedProps": {
+                    "type": "leave"
+                }
+            })
+            
+        for reminder in reminders:
+            events.append({
+                "id": f"reminder-{reminder['id']}",
+                "title": reminder['title'],
+                "start": reminder['date'],
+                "backgroundColor": "#3B82F6", # Blue
+                "borderColor": "#2563EB",
+                "extendedProps": {
+                    "type": "reminder",
+                    "isCompleted": reminder.get('isCompleted')
+                }
+            })
+            
+        return events
+    except Exception as e:
+        log_error(e, "Get calendar events")
+        return []
+
+@app.get("/api/users")
+def get_users(current_user: dict = Depends(get_current_user)):
+    """
+    Tüm kullanıcıları döndürür (Sadece admin).
+    """
+    user_role = current_user.get('role')
+    username = current_user.get('sub')
+    
+    if user_role != 'admin':
+        logger.warning(f"❌ Unauthorized users list access attempt | User: {username}")
+        raise HTTPException(status_code=403, detail="Bu işlem için yönetici yetkisi gerekli")
+    
+    logger.info(f"👥 Users list request | Admin: {username}")
+    
+    try:
+        users = get_all_users()
+        logger.info(f"✅ Retrieved {len(users)} users | Admin: {username}")
+        return users
+    except Exception as e:
+        log_error(e, f"Get users by admin {username}")
+        raise HTTPException(status_code=500, detail="Kullanıcı listesi yüklenirken hata oluştu")
+
+
+class AdminUserCreate(BaseModel):
+    username: str
+    email: str
+    password: str
+    full_name: str
+    department: Optional[str] = None
+
+
+@app.post("/api/users/admin")
+def create_admin(
+    user_data: AdminUserCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Yeni bir admin kullanıcı oluşturur (Sadece admin).
+    """
+    user_role = current_user.get('role')
+    username = current_user.get('sub')
+    
+    if user_role != 'admin':
+        logger.warning(f"❌ Unauthorized admin creation attempt | User: {username}")
+        raise HTTPException(status_code=403, detail="Bu işlem için yönetici yetkisi gerekli")
+    
+    logger.info(f"👤 Creating admin user | Admin: {username} | New user: {user_data.username}")
+    
+    try:
+        if not user_data.username or not user_data.email or not user_data.password:
+            raise HTTPException(status_code=400, detail="Kullanıcı adı, e-posta ve şifre zorunludur")
+        
+        admin_id = create_admin_user(
+            username=user_data.username,
+            email=user_data.email,
+            password=user_data.password,
+            full_name=user_data.full_name,
+            department=user_data.department
+        )
+        
+        if admin_id:
+            logger.info(f"✅ Admin user created | ID: {admin_id} | Admin: {username}")
+            return {
+                "success": True,
+                "message": "Admin kullanıcı oluşturuldu",
+                "user_id": admin_id
+            }
+        else:
+            logger.warning(f"❌ Admin creation failed | Admin: {username}")
+            raise HTTPException(status_code=400, detail="Admin oluşturulamadı. Kullanıcı adı veya e-posta zaten kullanılıyor olabilir.")
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error(e, f"Create admin by admin {username}")
+        raise HTTPException(status_code=500, detail="Admin oluşturulurken hata oluştu")
+
+
+class UserRoleUpdate(BaseModel):
+    user_role: str
+
+
+@app.put("/api/users/{user_id}/role")
+def update_role(
+    user_id: int,
+    role_data: UserRoleUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Bir kullanıcının rolünü günceller (Sadece admin).
+    """
+    user_role = current_user.get('role')
+    username = current_user.get('sub')
+    
+    if user_role != 'admin':
+        logger.warning(f"❌ Unauthorized role update attempt | User: {username}")
+        raise HTTPException(status_code=403, detail="Bu işlem için yönetici yetkisi gerekli")
+    
+    if role_data.user_role not in ['admin', 'employee']:
+        raise HTTPException(status_code=400, detail="Geçersiz rol. 'admin' veya 'employee' olmalıdır.")
+    
+    logger.info(f"🔄 Updating user role | User ID: {user_id} | New role: {role_data.user_role} | Admin: {username}")
+    
+    try:
+        success = update_user_role(user_id, role_data.user_role)
+        
+        if success:
+            logger.info(f"✅ User role updated | User ID: {user_id} | Admin: {username}")
+            return {
+                "success": True,
+                "message": "Kullanıcı rolü güncellendi"
+            }
+        else:
+            logger.warning(f"❌ Role update failed | User ID: {user_id} | Admin: {username}")
+            raise HTTPException(status_code=500, detail="Rol güncellenemedi")
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error(e, f"Update role by admin {username}")
+        raise HTTPException(status_code=500, detail="Rol güncellenirken hata oluştu")
+
+
+class PasswordReset(BaseModel):
+    new_password: str
+
+
+@app.put("/api/users/{user_id}/password")
+def reset_password(
+    user_id: int,
+    password_data: PasswordReset,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Bir kullanıcının şifresini sıfırlar (Sadece admin).
+    """
+    user_role = current_user.get('role')
+    username = current_user.get('sub')
+    
+    if user_role != 'admin':
+        logger.warning(f"❌ Unauthorized password reset attempt | User: {username}")
+        raise HTTPException(status_code=403, detail="Bu işlem için yönetici yetkisi gerekli")
+    
+    if not password_data.new_password or len(password_data.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Şifre en az 6 karakter olmalıdır")
+    
+    logger.info(f"🔐 Resetting password | User ID: {user_id} | Admin: {username}")
+    
+    try:
+        success = reset_user_password(user_id, password_data.new_password)
+        
+        if success:
+            logger.info(f"✅ Password reset | User ID: {user_id} | Admin: {username}")
+            return {
+                "success": True,
+                "message": "Şifre sıfırlandı"
+            }
+        else:
+            logger.warning(f"❌ Password reset failed | User ID: {user_id} | Admin: {username}")
+            raise HTTPException(status_code=500, detail="Şifre sıfırlanamadı")
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error(e, f"Reset password by admin {username}")
+        raise HTTPException(status_code=500, detail="Şifre sıfırlanırken hata oluştu")
+
+
+# ==================== DEPARTMENT MANAGEMENT ENDPOINTS ====================
+
+@app.get("/api/departments")
+def get_departments(current_user: dict = Depends(get_current_user)):
+    """
+    Tüm departmanları döndürür (Sadece admin).
+    """
+    user_role = current_user.get('role')
+    username = current_user.get('sub')
+    
+    if user_role != 'admin':
+        logger.warning(f"❌ Unauthorized departments access attempt | User: {username}")
+        raise HTTPException(status_code=403, detail="Bu işlem için yönetici yetkisi gerekli")
+    
+    try:
+        departments = get_all_departments()
+        return departments
+    except Exception as e:
+        log_error(e, f"Get departments by admin {username}")
+        raise HTTPException(status_code=500, detail="Departmanlar yüklenirken hata oluştu")
+
+
+# ==================== SYSTEM SETTINGS ENDPOINTS ====================
+
+@app.get("/api/settings")
+def get_settings(current_user: dict = Depends(get_current_user)):
+    """
+    Sistem ayarlarını döndürür (Sadece admin).
+    """
+    user_role = current_user.get('role')
+    username = current_user.get('sub')
+    
+    if user_role != 'admin':
+        logger.warning(f"❌ Unauthorized settings access attempt | User: {username}")
+        raise HTTPException(status_code=403, detail="Bu işlem için yönetici yetkisi gerekli")
+    
+    try:
+        settings = get_system_settings()
+        return settings
+    except Exception as e:
+        log_error(e, f"Get settings by admin {username}")
+        raise HTTPException(status_code=500, detail="Ayarlar yüklenirken hata oluştu")
+
+
+@app.put("/api/settings")
+def update_settings(
+    settings_data: dict,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Sistem ayarlarını günceller (Sadece admin).
+    """
+    user_role = current_user.get('role')
+    username = current_user.get('sub')
+    
+    if user_role != 'admin':
+        logger.warning(f"❌ Unauthorized settings update attempt | User: {username}")
+        raise HTTPException(status_code=403, detail="Bu işlem için yönetici yetkisi gerekli")
+    
+    logger.info(f"⚙️ Updating settings | Admin: {username}")
+    
+    try:
+        success = update_system_settings(settings_data)
+        
+        if success:
+            logger.info(f"✅ Settings updated | Admin: {username}")
+            return {
+                "success": True,
+                "message": "Ayarlar güncellendi"
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Ayarlar güncellenemedi")
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error(e, f"Update settings by admin {username}")
+        raise HTTPException(status_code=500, detail="Ayarlar güncellenirken hata oluştu")
 
 
 if __name__ == "__main__":

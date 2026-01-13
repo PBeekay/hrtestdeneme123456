@@ -49,13 +49,13 @@ const Toast: React.FC<ToastProps> = ({ id, message, type, onClose }) => {
 
   return (
     <div
-      className={`${getToastStyles()} text-white px-6 py-4 rounded-2xl shadow-lg border-2 flex items-center space-x-3 min-w-[300px] animate-slideInRight backdrop-blur-sm`}
+      className={`${getToastStyles()} text-white px-4 py-2.5 rounded-md shadow-lg border-2 flex items-center space-x-2 min-w-[240px] max-w-[320px] animate-slideInRight backdrop-blur-sm`}
     >
-      <span className="text-2xl">{getIcon()}</span>
-      <p className="flex-1 font-medium">{message}</p>
+      <span className="text-lg">{getIcon()}</span>
+      <p className="flex-1 text-sm font-medium">{message}</p>
       <button
         onClick={() => onClose(id)}
-        className="text-white hover:bg-white/20 rounded-full p-1 transition-colors"
+        className="text-white hover:bg-white/20 rounded-full p-0.5 transition-colors text-xs"
       >
         ✕
       </button>

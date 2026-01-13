@@ -8,6 +8,33 @@ import config from '../config/env';
 // API Configuration
 const API_BASE_URL = config.apiUrl;
 
+/**
+ * Decode JWT token to get user_id
+ */
+const getUserIdFromToken = (): number | null => {
+  try {
+    const token = localStorage.getItem('authToken');
+    if (!token) return null;
+
+    // JWT format: header.payload.signature
+    const payload = token.split('.')[1];
+    if (!payload) return null;
+
+    // Decode base64 (handle URL-safe base64)
+    const decoded = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+
+    // Backend includes user_id in token payload
+    if (decoded.user_id) {
+      return typeof decoded.user_id === 'number' ? decoded.user_id : parseInt(decoded.user_id);
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error decoding token:', error);
+    return null;
+  }
+};
+
 interface ApiResponse<T> {
   data?: T;
   error?: string;
@@ -22,7 +49,7 @@ export const fetchWithAuth = async <T>(
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> => {
   const token = localStorage.getItem('authToken');
-  
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
@@ -84,7 +111,11 @@ export const api = {
   },
 
   logout: async () => {
-    return fetchWithAuth('/api/logout', { method: 'POST' });
+    const token = localStorage.getItem('authToken');
+    return fetchWithAuth('/api/logout', {
+      method: 'POST',
+      body: JSON.stringify({ token: token || '' })
+    });
   },
 
   // Dashboard
@@ -93,38 +124,67 @@ export const api = {
   },
 
   // Tasks
-  completeTask: async (taskId: number) => {
-    return fetchWithAuth(`/api/tasks/${taskId}/complete`, { method: 'POST' });
+  updateTaskStatus: async (taskId: number, status: 'pending' | 'completed' | 'cancelled') => {
+    return fetchWithAuth(`/api/tasks/${taskId}/status?status=${status}`, { method: 'PUT' });
   },
 
   // Leave Requests
   createLeaveRequest: async (data: any) => {
-    return fetchWithAuth('/api/leave-request', {
+    const userId = getUserIdFromToken();
+    if (!userId) {
+      return { status: 401, error: 'Kullanıcı kimliği bulunamadı' };
+    }
+    return fetchWithAuth(`/api/leave-requests?user_id=${userId}`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
   },
 
-  getLeaveRequests: async () => {
-    return fetchWithAuth('/api/admin/leave-requests');
+  getLeaveRequests: async (userId?: number, status?: string) => {
+    let queryArgs: string[] = [];
+
+    if (userId) {
+      queryArgs.push(`user_id=${userId}`);
+    }
+    if (status) {
+      queryArgs.push(`status=${status}`);
+    }
+
+    const queryString = queryArgs.length > 0 ? `?${queryArgs.join('&')}` : '';
+    return fetchWithAuth(`/api/leave-requests${queryString}`);
   },
 
-  updateLeaveRequest: async (requestId: number, status: string) => {
-    return fetchWithAuth(`/api/admin/leave-requests/${requestId}`, {
+  updateLeaveRequest: async (requestId: number, approved: boolean, reason?: string) => {
+    const adminId = getUserIdFromToken();
+    if (!adminId) {
+      return { status: 401, error: 'Kullanıcı kimliği bulunamadı' };
+    }
+    let query = `?admin_id=${adminId}&approved=${approved}`;
+    if (reason) {
+      query += `&reason=${encodeURIComponent(reason)}`;
+    }
+    return fetchWithAuth(`/api/leave-requests/${requestId}/approve${query}`, {
       method: 'PUT',
-      body: JSON.stringify({ status }),
     });
   },
 
   // Widgets
   getUserWidgets: async () => {
-    return fetchWithAuth('/api/user/widgets');
+    const userId = getUserIdFromToken();
+    if (!userId) {
+      return { status: 401, error: 'Kullanıcı kimliği bulunamadı' };
+    }
+    return fetchWithAuth(`/api/widgets?user_id=${userId}`);
   },
 
   updateUserWidgets: async (widgets: any) => {
-    return fetchWithAuth('/api/user/widgets', {
-      method: 'POST',
-      body: JSON.stringify({ widgets }),
+    const userId = getUserIdFromToken();
+    if (!userId) {
+      return { status: 401, error: 'Kullanıcı kimliği bulunamadı' };
+    }
+    return fetchWithAuth(`/api/widgets?user_id=${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(widgets),
     });
   },
 
@@ -178,11 +238,10 @@ export const api = {
     return fetchWithAuth('/api/employees');
   },
 
-  addEmployeeNote: async (employeeId: number, note: string) => {
-    return fetchWithAuth(`/api/employees/${employeeId}/notes`, {
-      method: 'POST',
-      body: JSON.stringify({ note }),
-    });
+
+
+  getReminders: async () => {
+    return fetchWithAuth('/api/reminders');
   },
 
   uploadEmployeeDocument: async (
@@ -195,8 +254,96 @@ export const api = {
     });
   },
 
+  updateEmployeeDocument: async (
+    employeeId: number,
+    documentId: number,
+    payload: { title: string; type: string }
+  ) => {
+    return fetchWithAuth(`/api/employees/${employeeId}/documents/${documentId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  deleteEmployeeDocument: async (employeeId: number, documentId: number) => {
+    return fetchWithAuth(`/api/employees/${employeeId}/documents/${documentId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  updateEmployee: async (employeeId: number, payload: any) => {
+    return fetchWithAuth(`/api/employees/${employeeId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  deleteEmployee: async (employeeId: number, deactivateOnly: boolean = true) => {
+    return fetchWithAuth(`/api/employees/${employeeId}?deactivate_only=${deactivateOnly}`, {
+      method: 'DELETE',
+    });
+  },
+
+  approveDocument: async (employeeId: number, documentId: number, approved: boolean, rejectionReason?: string) => {
+    return fetchWithAuth(`/api/employees/${employeeId}/documents/${documentId}/approve`, {
+      method: 'PUT',
+      body: JSON.stringify({ approved, rejection_reason: rejectionReason }),
+    });
+  },
+
+  // User Management
+  getUsers: async () => {
+    return fetchWithAuth('/api/users');
+  },
+
+  createAdmin: async (payload: { username: string; email: string; password: string; full_name: string; department?: string }) => {
+    return fetchWithAuth('/api/users/admin', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  updateUserRole: async (userId: number, userRole: string) => {
+    return fetchWithAuth(`/api/users/${userId}/role`, {
+      method: 'PUT',
+      body: JSON.stringify({ user_role: userRole }),
+    });
+  },
+
+  resetUserPassword: async (userId: number, newPassword: string) => {
+    return fetchWithAuth(`/api/users/${userId}/password`, {
+      method: 'PUT',
+      body: JSON.stringify({ new_password: newPassword }),
+    });
+  },
+
+  // Departments
+  getDepartments: async () => {
+    return fetchWithAuth('/api/departments');
+  },
+
+  // Settings
+  getSettings: async () => {
+    return fetchWithAuth('/api/settings');
+  },
+
+  updateSettings: async (settings: any) => {
+    return fetchWithAuth('/api/settings', {
+      method: 'PUT',
+      body: JSON.stringify(settings),
+    });
+  },
+
   createEmployee: async (payload: any) => {
     return fetchWithAuth('/api/employees', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  // Announcements
+  createAnnouncement: async (payload: { title: string; content: string; category: string; announcement_date: string }) => {
+    return fetchWithAuth('/api/announcements', {
       method: 'POST',
       body: JSON.stringify(payload),
     });

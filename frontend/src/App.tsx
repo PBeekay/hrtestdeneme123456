@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
-import SkeletonCard from './components/SkeletonCard';
-import ToastContainer from './components/ToastContainer';
-import Confetti from './components/Confetti';
-import LoginPage from './components/LoginPage';
-import AssetManagementPanel from './components/AssetManagementPanel';
-import DashboardView from './components/DashboardView';
+import SkeletonCard from './components/ui/SkeletonCard';
+import ToastContainer from './components/ui/ToastContainer';
+import Confetti from './components/ui/Confetti';
+import LoginPage from './pages/LoginPage';
+import AssetManagementPanel from './components/dashboard/AssetManagementPanel';
+import DashboardView from './components/dashboard/DashboardView';
+import Layout from './components/layout/Layout';
 import { useDarkMode } from './hooks/useDarkMode';
 import { useToast } from './hooks/useToast';
 import { useAuth } from './hooks/useAuth';
@@ -15,12 +16,13 @@ import { useSearch } from './hooks/useSearch';
 import LeaveManagementPage from './pages/LeaveManagementPage';
 import EmployeeManagementPage from './pages/EmployeeManagementPage';
 import EmployeeCreatePage from './pages/EmployeeCreatePage';
+import SettingsPage from './pages/SettingsPage';
 import { useNavigate } from 'react-router-dom';
 
 function App() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showAssetManagement, setShowAssetManagement] = useState(false);
-  
+
   const [isDarkMode, setIsDarkMode] = useDarkMode();
   const { toasts, addToast, removeToast } = useToast();
   const { isAuthenticated, loginError, handleLogin, handleLogout } = useAuth();
@@ -30,10 +32,10 @@ function App() {
   // Get tasks and search functionality
   const pendingTasks = dashboardData?.pendingTasks || [];
   const announcements = dashboardData?.announcements || [];
-  
+
   const { completedTasks, showConfetti, handleTaskComplete, getActiveTasks } = useTasks(pendingTasks);
   const { handleSearch, filterTasks, filterAnnouncements } = useSearch();
-  
+
   const filteredTasks = filterTasks(pendingTasks);
   const filteredAnnouncements = filterAnnouncements(announcements);
   const activeTasks = getActiveTasks(pendingTasks);
@@ -59,7 +61,7 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-blue-50 to-neutral-100 dark:from-neutral-900 dark:via-neutral-800 dark:to-neutral-900 p-4 md:p-8">
+      <div className="min-h-screen bg-[#F0F0EB] dark:bg-[#0F172A] p-4 md:p-8">
         <div className="max-w-7xl mx-auto">
           <header className="mb-8 animate-pulse">
             <div className="h-10 bg-neutral-200 dark:bg-neutral-700 rounded-full w-64 mb-3"></div>
@@ -102,7 +104,7 @@ function App() {
   const handleNavigateToCreateEmployee = () => navigate('/employees/new');
 
   return (
-    <>
+    <Layout>
       <Confetti active={showConfetti} />
       <ToastContainer toasts={toasts} removeToast={removeToast} />
       <Routes>
@@ -161,6 +163,16 @@ function App() {
             />
           }
         />
+        <Route
+          path="/settings"
+          element={
+            <SettingsPage
+              userRole={dashboardData.userInfo.userRole}
+              onBack={handleBackToDashboard}
+              addToast={addToast}
+            />
+          }
+        />
       </Routes>
       {showAssetManagement && (
         <AssetManagementPanel
@@ -169,7 +181,7 @@ function App() {
           onError={(msg) => addToast(msg, 'error')}
         />
       )}
-    </>
+    </Layout>
   );
 }
 

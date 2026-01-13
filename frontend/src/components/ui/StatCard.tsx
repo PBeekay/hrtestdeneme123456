@@ -56,7 +56,7 @@ const StatCard: React.FC<StatCardProps> = ({
             }
           : undefined
       }
-      className={`bg-white/70 dark:bg-neutral-800/70 backdrop-blur-sm rounded-xl p-3 border border-white dark:border-neutral-700 shadow-sm transition-all duration-300 animate-fadeInUp group ${
+      className={`bg-stone-50/70 dark:bg-neutral-800/70 backdrop-blur-sm rounded-md p-3 border border-stone-200/50 dark:border-neutral-700 shadow-sm transition-all duration-150 animate-fadeInUp group ${
         interactive
           ? 'hover:shadow-md hover:scale-105 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500'
           : ''

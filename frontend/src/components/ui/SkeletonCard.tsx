@@ -10,7 +10,7 @@ const SkeletonCard: React.FC<SkeletonCardProps> = ({ className = '' }) => {
       className={`
         bg-white 
         dark:bg-neutral-800
-        rounded-3xl 
+        rounded-lg 
         shadow-sm 
         p-6
         border 

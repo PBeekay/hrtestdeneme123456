@@ -5,6 +5,7 @@ export interface UserInfo {
   email: string;
   avatar: string;
   userRole?: 'admin' | 'employee';
+  startDate?: string | null;
 }
 
 export interface LeaveBalance {
@@ -31,6 +32,8 @@ export interface Announcement {
   title: string;
   date: string;
   category: string;
+  description?: string;
+  author_name?: string;
 }
 
 export interface WorkDay {
@@ -142,4 +145,19 @@ export interface AssetStatistics {
   lost_count: number;
   total_count: number;
   employee_count?: number;
+}
+
+export interface Reminder {
+  id: number;
+  title: string;
+  date: string;
+  type: 'probation' | 'birthday' | 'tax' | 'other';
+  priority: 'high' | 'medium' | 'low';
+}
+
+export interface EmployeeNote {
+  id: number;
+  note: string;
+  created_at: string;
+  created_by_name?: string;
 }

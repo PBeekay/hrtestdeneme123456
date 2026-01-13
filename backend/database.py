@@ -226,7 +226,7 @@ def get_user_tasks(user_id: int, status: str = 'pending') -> List[Dict[str, Any]
         with get_db_cursor() as cursor:
             cursor.execute(
                 """
-                SELECT id, title, priority, DATE_FORMAT(due_date, '%%Y-%%m-%%d') AS `dueDate`
+                SELECT id, title, priority, DATE_FORMAT(due_date, '%%Y-%%m-%%d %%H:%%i') AS `dueDate`
                 FROM tasks 
                 WHERE user_id = %s AND status = %s
                 ORDER BY 
@@ -297,7 +297,7 @@ def get_active_announcements(limit: int = 10) -> List[Dict[str, Any]]:
                         a.title, 
                         a.content as description,
                         a.category, 
-                        DATE_FORMAT(a.announcement_date, '%%Y-%%m-%%d') AS `date`,
+                        DATE_FORMAT(a.announcement_date, '%%Y-%%m-%%d %%H:%%i') AS `date`,
                         COALESCE(u.full_name, 'Sistem') as author_name
                     FROM announcements a
                     LEFT JOIN users u ON a.created_by = u.id
@@ -316,7 +316,7 @@ def get_active_announcements(limit: int = 10) -> List[Dict[str, Any]]:
                         title, 
                         content as description,
                         category, 
-                        DATE_FORMAT(announcement_date, '%%Y-%%m-%%d') AS `date`,
+                        DATE_FORMAT(announcement_date, '%%Y-%%m-%%d %%H:%%i') AS `date`,
                         'Sistem' as author_name
                     FROM announcements 
                     WHERE is_active = TRUE
@@ -413,8 +413,8 @@ def get_leave_requests(user_id: int, status: Optional[str] = None) -> List[Dict[
                     SELECT 
                         id,
                         leave_type AS leaveType,
-                        DATE_FORMAT(start_date, '%%Y-%%m-%%d') AS startDate,
-                        DATE_FORMAT(end_date, '%%Y-%%m-%%d') AS endDate,
+                        DATE_FORMAT(start_date, '%%Y-%%m-%%d %%H:%%i') AS startDate,
+                        DATE_FORMAT(end_date, '%%Y-%%m-%%d %%H:%%i') AS endDate,
                         total_days AS totalDays,
                         reason,
                         status
@@ -430,8 +430,8 @@ def get_leave_requests(user_id: int, status: Optional[str] = None) -> List[Dict[
                     SELECT 
                         id,
                         leave_type AS leaveType,
-                        DATE_FORMAT(start_date, '%%Y-%%m-%%d') AS startDate,
-                        DATE_FORMAT(end_date, '%%Y-%%m-%%d') AS endDate,
+                        DATE_FORMAT(start_date, '%%Y-%%m-%%d %%H:%%i') AS startDate,
+                        DATE_FORMAT(end_date, '%%Y-%%m-%%d %%H:%%i') AS endDate,
                         total_days AS totalDays,
                         reason,
                         status
@@ -447,7 +447,42 @@ def get_leave_requests(user_id: int, status: Optional[str] = None) -> List[Dict[
         return []
 
 
-def create_leave_request(user_id: int, leave_type: str, start_date: str, end_date: str, total_days: int, reason: str) -> Optional[int]:
+def get_all_leave_requests(status: Optional[str] = None) -> List[Dict[str, Any]]:
+    """
+    Tüm çalışanların izin taleplerini döndürür (Admin için).
+    """
+    try:
+        with get_db_cursor() as cursor:
+            query = """
+                SELECT 
+                    lr.id,
+                    lr.leave_type AS leaveType,
+                    DATE_FORMAT(lr.start_date, '%%Y-%%m-%%d %%H:%%i') AS startDate,
+                    DATE_FORMAT(lr.end_date, '%%Y-%%m-%%d %%H:%%i') AS endDate,
+                    lr.total_days AS totalDays,
+                    CONCAT(u.full_name, ' | ', lr.reason) AS reason,
+                    lr.status,
+                    u.full_name,
+                    u.avatar
+                FROM leave_requests lr
+                JOIN users u ON lr.user_id = u.id
+            """
+            params = []
+            
+            if status:
+                query += " WHERE lr.status = %s"
+                params.append(status)
+            
+            query += " ORDER BY lr.created_at DESC"
+            
+            cursor.execute(query, tuple(params))
+            return cursor.fetchall()
+    except Exception as e:
+        print(f"Get all leave requests error: {e}")
+        return []
+
+
+def create_leave_request(user_id: int, leave_type: str, start_date: str, end_date: str, total_days: float, reason: str) -> Optional[int]:
     """
     Create a new leave request
     """
@@ -1143,6 +1178,119 @@ def get_employee_stats() -> Dict[str, Any]:
         conn.close()
 
 
+def update_employee(
+    employee_id: int,
+    name: Optional[str] = None,
+    email: Optional[str] = None,
+    department: Optional[str] = None,
+    role: Optional[str] = None,
+    phone: Optional[str] = None,
+    manager: Optional[int] = None,
+    location: Optional[str] = None,
+    start_date: Optional[str] = None,
+    status: Optional[str] = None
+) -> bool:
+    """
+    Bir çalışanın bilgilerini günceller.
+    Başarılı olursa True, aksi halde False döner.
+    """
+    conn = get_db_connection()
+    if not conn:
+        return False
+    
+    try:
+        with conn.cursor() as cursor:
+            # Build dynamic update query
+            updates = []
+            values = []
+            
+            if name is not None:
+                updates.append("full_name = %s")
+                values.append(name)
+            if email is not None:
+                # Check if email is already taken by another user
+                cursor.execute("SELECT id FROM users WHERE email = %s AND id != %s", (email, employee_id))
+                if cursor.fetchone():
+                    return False
+                updates.append("email = %s")
+                values.append(email)
+                # Also update username if email changed
+                username = email.split('@')[0]
+                updates.append("username = %s")
+                values.append(username)
+            if department is not None:
+                updates.append("department = %s")
+                values.append(department)
+            if role is not None:
+                updates.append("role = %s")
+                values.append(role)
+            if phone is not None:
+                updates.append("phone = %s")
+                values.append(phone)
+            if manager is not None:
+                updates.append("manager = %s")
+                values.append(manager)
+            if location is not None:
+                updates.append("location = %s")
+                values.append(location)
+            if start_date is not None:
+                updates.append("start_date = %s")
+                values.append(start_date)
+            if status is not None:
+                updates.append("status = %s")
+                values.append(status)
+            
+            if not updates:
+                return False
+            
+            values.append(employee_id)
+            query = f"UPDATE users SET {', '.join(updates)} WHERE id = %s"
+            
+            cursor.execute(query, values)
+            conn.commit()
+            return cursor.rowcount > 0
+    except Exception as e:
+        print(f"Update employee error: {e}")
+        import traceback
+        traceback.print_exc()
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+
+def delete_employee(employee_id: int, deactivate_only: bool = True) -> bool:
+    """
+    Bir çalışanı siler veya devre dışı bırakır.
+    deactivate_only=True ise sadece status'u 'terminated' yapar.
+    deactivate_only=False ise kullanıcıyı tamamen siler (CASCADE ile ilişkili kayıtlar da silinir).
+    Başarılı olursa True, aksi halde False döner.
+    """
+    conn = get_db_connection()
+    if not conn:
+        return False
+    
+    try:
+        with conn.cursor() as cursor:
+            if deactivate_only:
+                # Just deactivate the employee
+                cursor.execute("UPDATE users SET status = 'terminated' WHERE id = %s", (employee_id,))
+            else:
+                # Delete the employee completely (CASCADE will handle related records)
+                cursor.execute("DELETE FROM users WHERE id = %s", (employee_id,))
+            
+            conn.commit()
+            return cursor.rowcount > 0
+    except Exception as e:
+        print(f"Delete employee error: {e}")
+        import traceback
+        traceback.print_exc()
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+
 def create_employee(
     name: str,
     email: str,
@@ -1259,43 +1407,75 @@ def create_employee(
         conn.close()
 
 
-def add_employee_note(employee_id: int, note: str, created_by: int) -> Optional[int]:
+
+
+
+def get_reminders(admin_id: int) -> List[Dict[str, Any]]:
     """
-    Bir çalışana not ekler.
-    Başarılı olursa not ID'sini döndürür, aksi halde None döner.
+    Admin için hatırlatıcıları getirir:
+    - Deneme süresi bitişi (start_date + 3 ay)
+    - Doğum günleri (email'den çıkarılabilir veya ayrı bir alan eklenebilir)
+    - Vergi ödemeleri (aylık sabit)
     """
     conn = get_db_connection()
     if not conn:
-        return None
+        return []
     
     try:
-        with conn.cursor() as cursor:
-            # Tablo var mı kontrol et
+        from datetime import datetime, timedelta
+        reminders = []
+        today = datetime.now().date()
+        
+        with conn.cursor(pymysql.cursors.DictCursor) as cursor:
+            # Deneme süresi bitişi - start_date + 3 ay
             cursor.execute("""
-                SELECT COUNT(*) as count
-                FROM information_schema.tables
-                WHERE table_schema = DATABASE()
-                AND table_name = 'employee_notes'
-            """)
-            table_exists = cursor.fetchone()['count'] > 0
+                SELECT 
+                    id,
+                    full_name as name,
+                    start_date,
+                    DATE_ADD(start_date, INTERVAL 3 MONTH) as probation_end_date
+                FROM users
+                WHERE start_date IS NOT NULL
+                AND status = 'active'
+                AND DATE_ADD(start_date, INTERVAL 3 MONTH) BETWEEN %s AND DATE_ADD(%s, INTERVAL 14 DAY)
+            """, (today, today))
             
-            if not table_exists:
-                print("employee_notes table does not exist yet")
-                return None
+            probation_employees = cursor.fetchall()
+            for emp in probation_employees:
+                days_until = (emp['probation_end_date'] - today).days
+                reminders.append({
+                    'id': f"probation_{emp['id']}",
+                    'type': 'probation',
+                    'title': f"{emp['name']}'in deneme süresi {days_until} gün sonra bitiyor",
+                    'message': f"{emp['name']}'in deneme süresi haftaya bitiyor",
+                    'date': emp['probation_end_date'].strftime('%Y-%m-%d'),
+                    'employee_id': emp['id'],
+                    'employee_name': emp['name'],
+                    'priority': 'high' if days_until <= 7 else 'medium'
+                })
             
-            cursor.execute("""
-                INSERT INTO employee_notes (employee_id, note, created_by)
-                VALUES (%s, %s, %s)
-            """, (employee_id, note, created_by))
-            conn.commit()
+            # Doğum günleri - email'den çıkaramayacağımız için şimdilik atlıyoruz
+            # Gelecekte users tablosuna birthday kolonu eklenebilir
             
-            return cursor.lastrowid
+            # Vergi ödemesi hatırlatması - her ayın 26'sı
+            tax_date = today.replace(day=26)
+            if tax_date >= today and tax_date <= today + timedelta(days=14):
+                days_until_tax = (tax_date - today).days
+                reminders.append({
+                    'id': f"tax_{tax_date.strftime('%Y-%m')}",
+                    'type': 'tax',
+                    'title': f'Vergi ödemesi hatırlatması',
+                    'message': f'Vergi ödemesi {days_until_tax} gün sonra',
+                    'date': tax_date.strftime('%Y-%m-%d'),
+                    'priority': 'medium'
+                })
+        
+        return reminders
     except Exception as e:
-        print(f"Add employee note error: {e}")
+        print(f"Get reminders error: {e}")
         import traceback
         traceback.print_exc()
-        conn.rollback()
-        return None
+        return []
     finally:
         conn.close()
 
@@ -1349,6 +1529,308 @@ def upload_employee_document(
         conn.close()
 
 
+def approve_employee_document(
+    document_id: int,
+    approved_by: int,
+    approved: bool,
+    rejection_reason: Optional[str] = None
+) -> bool:
+    """
+    Bir belgeyi onaylar veya reddeder.
+    Başarılı olursa True, aksi halde False döner.
+    """
+    conn = get_db_connection()
+    if not conn:
+        return False
+    
+    try:
+        with conn.cursor() as cursor:
+            if approved:
+                cursor.execute("""
+                    UPDATE employee_documents 
+                    SET status = 'approved', approved_by = %s, approved_at = CURRENT_TIMESTAMP, rejection_reason = NULL
+                    WHERE id = %s
+                """, (approved_by, document_id))
+            else:
+                cursor.execute("""
+                    UPDATE employee_documents 
+                    SET status = 'rejected', approved_by = %s, approved_at = CURRENT_TIMESTAMP, rejection_reason = %s
+                    WHERE id = %s
+                """, (approved_by, rejection_reason, document_id))
+            
+            conn.commit()
+            return cursor.rowcount > 0
+    except Exception as e:
+        print(f"Approve employee document error: {e}")
+        import traceback
+        traceback.print_exc()
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+
+def update_employee_document(
+    document_id: int,
+    title: Optional[str] = None,
+    doc_type: Optional[str] = None,
+    status: Optional[str] = None,
+    document_url: Optional[str] = None,
+    document_filename: Optional[str] = None
+) -> bool:
+    """
+    Bir belge kaydını günceller.
+    Başarılı olursa True, aksi halde False döner.
+    """
+    conn = get_db_connection()
+    if not conn:
+        return False
+    
+    try:
+        with conn.cursor() as cursor:
+            # Build dynamic update query
+            updates = []
+            values = []
+            
+            if title is not None:
+                updates.append("title = %s")
+                values.append(title)
+            if doc_type is not None:
+                updates.append("type = %s")
+                values.append(doc_type)
+            if status is not None:
+                updates.append("status = %s")
+                values.append(status)
+            if document_url is not None:
+                updates.append("document_url = %s")
+                values.append(document_url)
+            if document_filename is not None:
+                updates.append("document_filename = %s")
+                values.append(document_filename)
+            
+            if not updates:
+                return False
+            
+            values.append(document_id)
+            query = f"UPDATE employee_documents SET {', '.join(updates)} WHERE id = %s"
+            
+            cursor.execute(query, values)
+            conn.commit()
+            return cursor.rowcount > 0
+    except Exception as e:
+        print(f"Update employee document error: {e}")
+        import traceback
+        traceback.print_exc()
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+
+def delete_employee_document(document_id: int) -> bool:
+    """
+    Bir belge kaydını siler.
+    Başarılı olursa True, aksi halde False döner.
+    """
+    conn = get_db_connection()
+    if not conn:
+        return False
+    
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("DELETE FROM employee_documents WHERE id = %s", (document_id,))
+            conn.commit()
+            return cursor.rowcount > 0
+    except Exception as e:
+        print(f"Delete employee document error: {e}")
+        import traceback
+        traceback.print_exc()
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+
+
+
+
+# ==================== USER MANAGEMENT ====================
+
+def get_all_users() -> List[Dict[str, Any]]:
+    """
+    Tüm kullanıcıları getirir (admin için).
+    """
+    conn = get_db_connection()
+    if not conn:
+        return []
+    
+    try:
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        cursor.execute("""
+            SELECT 
+                id,
+                username,
+                full_name,
+                email,
+                role,
+                department,
+                user_role,
+                status,
+                created_at
+            FROM users
+            ORDER BY full_name ASC
+        """)
+        users = cursor.fetchall()
+        cursor.close()
+        return users
+    except Exception as e:
+        print(f"Get all users error: {e}")
+        return []
+    finally:
+        conn.close()
+
+
+def create_admin_user(
+    username: str,
+    email: str,
+    password: str,
+    full_name: str,
+    department: Optional[str] = None
+) -> Optional[int]:
+    """
+    Yeni bir admin kullanıcı oluşturur.
+    """
+    conn = get_db_connection()
+    if not conn:
+        return None
+    
+    try:
+        with conn.cursor() as cursor:
+            # Check if username or email already exists
+            cursor.execute("SELECT id FROM users WHERE username = %s OR email = %s", (username, email))
+            if cursor.fetchone():
+                return None
+            
+            password_hash = hash_password(password)
+            initials = ''.join([word[0].upper() for word in full_name.split()[:2]])
+            
+            cursor.execute("""
+                INSERT INTO users (username, password_hash, full_name, email, role, department, avatar, user_role)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, 'admin')
+            """, (username, password_hash, full_name, email, 'Admin', department or 'İK', initials))
+            conn.commit()
+            
+            return cursor.lastrowid
+    except Exception as e:
+        print(f"Create admin user error: {e}")
+        import traceback
+        traceback.print_exc()
+        conn.rollback()
+        return None
+    finally:
+        conn.close()
+
+
+def update_user_role(user_id: int, user_role: str) -> bool:
+    """
+    Bir kullanıcının rolünü günceller (admin/employee).
+    """
+    conn = get_db_connection()
+    if not conn:
+        return False
+    
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("UPDATE users SET user_role = %s WHERE id = %s", (user_role, user_id))
+            conn.commit()
+            return cursor.rowcount > 0
+    except Exception as e:
+        print(f"Update user role error: {e}")
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+
+def reset_user_password(user_id: int, new_password: str) -> bool:
+    """
+    Bir kullanıcının şifresini sıfırlar.
+    """
+    conn = get_db_connection()
+    if not conn:
+        return False
+    
+    try:
+        with conn.cursor() as cursor:
+            password_hash = hash_password(new_password)
+            cursor.execute("UPDATE users SET password_hash = %s WHERE id = %s", (password_hash, user_id))
+            conn.commit()
+            return cursor.rowcount > 0
+    except Exception as e:
+        print(f"Reset user password error: {e}")
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+
+# ==================== DEPARTMENT MANAGEMENT ====================
+
+def get_all_departments() -> List[str]:
+    """
+    Tüm departmanları getirir.
+    """
+    conn = get_db_connection()
+    if not conn:
+        return []
+    
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT DISTINCT department FROM users WHERE department IS NOT NULL AND department != '' ORDER BY department ASC")
+        departments = [row[0] for row in cursor.fetchall()]
+        cursor.close()
+        return departments
+    except Exception as e:
+        print(f"Get all departments error: {e}")
+        return []
+    finally:
+        conn.close()
+
+
+# ==================== SYSTEM SETTINGS ====================
+
+def get_system_settings() -> Dict[str, Any]:
+    """
+    Sistem ayarlarını getirir (varsayılan değerler döner, gerçek tablo yoksa).
+    """
+    # For now, return default settings
+    # In the future, this could read from a settings table
+    return {
+        'leave_policy': {
+            'annual_leave_days': 14,
+            'sick_leave_days': 5,
+            'personal_leave_days': 3,
+        },
+        'notifications': {
+            'email_enabled': True,
+            'sms_enabled': False,
+        },
+        'system': {
+            'maintenance_mode': False,
+            'allow_registration': False,
+        }
+    }
+
+
+def update_system_settings(settings: Dict[str, Any]) -> bool:
+    """
+    Sistem ayarlarını günceller.
+    """
+    # For now, just return True
+    # In the future, this could write to a settings table
+    return True
+
+
 # ==================== UTILITY FUNCTIONS ====================
 
 def test_connection():
@@ -1367,6 +1849,145 @@ def test_connection():
     except Exception as e:
         print(f"❌ Connection test error: {e}")
         return False
+
+
+# ==================== CALENDAR & REMINDERS ====================
+
+def get_personal_reminders(user_id: int) -> List[Dict[str, Any]]:
+    """
+    Kullanıcının kişisel hatırlatıcılarını döndürür.
+    """
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT 
+                    id, 
+                    title, 
+                    DATE_FORMAT(date, '%%Y-%%m-%%d %%H:%%i') as date,
+                    is_completed as isCompleted
+                FROM personal_reminders 
+                WHERE user_id = %s
+                ORDER BY date ASC
+                """,
+                (user_id,)
+            )
+            return cursor.fetchall()
+    except Exception as e:
+        print(f"Get personal reminders error: {e}")
+        return []
+
+
+def create_personal_reminder(user_id: int, title: str, date: str) -> Optional[int]:
+    """
+    Yeni bir kişisel hatırlatıcı oluşturur.
+    """
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO personal_reminders (user_id, title, date)
+                VALUES (%s, %s, %s)
+                """,
+                (user_id, title, date)
+            )
+            return cursor.lastrowid
+    except Exception as e:
+        print(f"Create personal reminder error: {e}")
+        return None
+
+
+def update_personal_reminder(reminder_id: int, is_completed: bool) -> bool:
+    """
+    Hatırlatıcı durumunu günceller.
+    """
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute(
+                "UPDATE personal_reminders SET is_completed = %s WHERE id = %s",
+                (is_completed, reminder_id)
+            )
+            return cursor.rowcount > 0
+    except Exception as e:
+        print(f"Update personal reminder error: {e}")
+        return False
+
+
+def delete_personal_reminder(reminder_id: int) -> bool:
+    """
+    Hatırlatıcıyı siler.
+    """
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute("DELETE FROM personal_reminders WHERE id = %s", (reminder_id,))
+            return cursor.rowcount > 0
+    except Exception as e:
+        print(f"Delete personal reminder error: {e}")
+        return False
+
+
+def get_upcoming_team_events(days: int = 30) -> Dict[str, List[Dict]]:
+    """
+    Yaklaşan doğum günleri ve iş yıldönümlerini döndürür.
+    """
+    conn = get_db_connection()
+    if not conn:
+        return {"birthdays": [], "anniversaries": []}
+        
+    try:
+        with conn.cursor() as cursor:
+            # Birthdays (ignores year, checks Month-Day)
+            # This logic finds birthdays in next 30 days
+            cursor.execute(
+                """
+                SELECT 
+                    id, full_name, avatar, department, 
+                    DATE_FORMAT(birth_date, '%%Y-%%m-%%d') as original_date,
+                    DATE_FORMAT(birth_date, '%%m-%%d') as day_month
+                FROM users 
+                WHERE birth_date IS NOT NULL
+                AND (
+                    DATE_FORMAT(birth_date, '%%m-%%d') BETWEEN DATE_FORMAT(NOW(), '%%m-%%d') 
+                    AND DATE_FORMAT(DATE_ADD(NOW(), INTERVAL %s DAY), '%%m-%%d')
+                )
+                ORDER BY day_month ASC
+                LIMIT 5
+                """,
+                (days,)
+            )
+            birthdays = cursor.fetchall()
+            
+            # Work Anniversaries
+            cursor.execute(
+                """
+                SELECT 
+                    id, full_name, avatar, department,
+                    DATE_FORMAT(start_date, '%%Y-%%m-%%d') as original_date,
+                    TIMESTAMPDIFF(YEAR, start_date, NOW()) as years,
+                    DATE_FORMAT(start_date, '%%m-%%d') as day_month
+                FROM users 
+                WHERE start_date IS NOT NULL
+                AND TIMESTAMPDIFF(YEAR, start_date, NOW()) > 0
+                AND (
+                    DATE_FORMAT(start_date, '%%m-%%d') BETWEEN DATE_FORMAT(NOW(), '%%m-%%d') 
+                    AND DATE_FORMAT(DATE_ADD(NOW(), INTERVAL %s DAY), '%%m-%%d')
+                )
+                ORDER BY day_month ASC
+                LIMIT 5
+                """,
+                (days,)
+            )
+            anniversaries = cursor.fetchall()
+            
+            return {
+                "birthdays": birthdays,
+                "anniversaries": anniversaries
+            }
+    except Exception as e:
+        print(f"Get team events error: {e}")
+        return {"birthdays": [], "anniversaries": []}
+    finally:
+        conn.close()
 
 
 if __name__ == "__main__":

@@ -52,6 +52,9 @@ ADD COLUMN IF NOT EXISTS start_date DATE NULL AFTER location;
 ALTER TABLE users 
 ADD COLUMN IF NOT EXISTS status ENUM('active', 'on_leave', 'terminated') DEFAULT 'active' AFTER start_date;
 
+ALTER TABLE users 
+ADD COLUMN IF NOT EXISTS user_role ENUM('admin', 'hr_specialist', 'employee') DEFAULT 'employee' AFTER status;
+
 -- İndeksler
 CREATE INDEX IF NOT EXISTS idx_user_status ON users(status);
 CREATE INDEX IF NOT EXISTS idx_user_manager ON users(manager);
@@ -109,6 +112,27 @@ CREATE TABLE IF NOT EXISTS leave_balance (
     UNIQUE KEY unique_user_year (user_id, year)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci;
 
+-- Leave requests table
+CREATE TABLE IF NOT EXISTS leave_requests (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    leave_type ENUM('annual', 'sick', 'personal') NOT NULL,
+    start_date DATETIME NOT NULL,
+    end_date DATETIME NOT NULL,
+    total_days FLOAT NOT NULL,
+    reason TEXT,
+    status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+    approved_by INT NULL,
+    approved_at TIMESTAMP NULL,
+    rejection_reason TEXT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (approved_by) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_user_status (user_id, status),
+    INDEX idx_dates (start_date, end_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci;
+
 -- Tasks table
 CREATE TABLE IF NOT EXISTS tasks (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -117,7 +141,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     description TEXT,
     priority ENUM('high', 'medium', 'low') DEFAULT 'medium',
     status ENUM('pending', 'completed', 'cancelled') DEFAULT 'pending',
-    due_date DATE NOT NULL,
+    due_date DATETIME NOT NULL,
     completed_at TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -146,7 +170,7 @@ CREATE TABLE IF NOT EXISTS announcements (
     title VARCHAR(255) NOT NULL,
     content TEXT,
     category VARCHAR(50) NOT NULL,
-    announcement_date DATE NOT NULL,
+    announcement_date DATETIME NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -166,7 +190,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci;
 
 -- Insert demo user (password: admin123)
-INSERT INTO users (username, password_hash, full_name, email, role, department, avatar) 
+INSERT INTO users (username, password_hash, full_name, email, role, department, avatar, user_role) 
 VALUES (
     'ikadmin',
     '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyDQ2xPHRvPW',
@@ -174,7 +198,8 @@ VALUES (
     'ayse.yilmaz@sirket.com',
     'Kıdemli İK Müdürü',
     'İnsan Kaynakları',
-    'AY'
+    'AY',
+    'admin'
 );
 
 -- Get the user ID
