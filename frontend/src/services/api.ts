@@ -348,6 +348,19 @@ export const api = {
       body: JSON.stringify(payload),
     });
   },
+
+  updateAnnouncement: async (id: number, payload: { title: string; content: string; category: string; announcement_date: string }) => {
+    return fetchWithAuth(`/api/announcements/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  deleteAnnouncement: async (id: number) => {
+    return fetchWithAuth(`/api/announcements/${id}`, {
+      method: 'DELETE',
+    });
+  },
 };
 
 export default api;

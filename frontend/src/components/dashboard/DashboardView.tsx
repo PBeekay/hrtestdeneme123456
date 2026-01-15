@@ -11,7 +11,7 @@ import api from '../../services/api';
 const DEFAULT_WIDGET_ORDER = [
   'leave',
   'announcements_mini',
-  'performance', // Zimmet özeti
+  'performance',
   'calendar',
   'announcements_list',
   'assets',
@@ -61,6 +61,8 @@ const DashboardView: React.FC<DashboardViewProps> = ({
     category: 'Genel',
     announcement_date: new Date().toISOString().split('T')[0],
   });
+  const [editingAnnouncementId, setEditingAnnouncementId] = useState<number | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
   const [submittingAnnouncement, setSubmittingAnnouncement] = useState(false);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<any | null>(null);
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date | null>(null);
@@ -74,7 +76,6 @@ const DashboardView: React.FC<DashboardViewProps> = ({
   const handleNavigateToLeaves = () => navigate('/leave');
   const handleNavigateToEmployees = () => navigate('/employees');
 
-  // ESC key to close modals
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -102,24 +103,36 @@ const DashboardView: React.FC<DashboardViewProps> = ({
 
     setSubmittingAnnouncement(true);
     try {
-      const result = await api.createAnnouncement({
+      let result;
+      const now = new Date();
+      const timeString = now.toTimeString().slice(0, 5); // HH:MM
+      const datePart = announcementForm.announcement_date || now.toISOString().split('T')[0];
+
+      const payload = {
         title: announcementForm.title,
         content: announcementForm.description,
         category: announcementForm.category,
-        announcement_date: announcementForm.announcement_date || new Date().toISOString().split('T')[0],
-      });
+        announcement_date: `${datePart} ${timeString}`,
+      };
 
-      if (result.status === 200 || result.status === 201) {
-        addToast('Duyuru başarıyla oluşturuldu', 'success');
+      if (editingAnnouncementId) {
+        result = await api.updateAnnouncement(editingAnnouncementId, payload);
+      } else {
+        result = await api.createAnnouncement(payload);
+      }
+
+      if (result.status === 200 || result.status === 201 || (result as any).success) {
+        addToast(editingAnnouncementId ? 'Duyuru güncellendi' : 'Duyuru başarıyla oluşturuldu', 'success');
         setShowAnnouncementForm(false);
         setAnnouncementForm({ title: '', description: '', category: 'Genel', announcement_date: new Date().toISOString().split('T')[0] });
-        // Refresh announcements - parent component should handle this
-        window.location.reload(); // Temporary solution
+        setEditingAnnouncementId(null);
+        setEditingAnnouncementId(null);
+        window.location.reload();
       } else {
-        addToast(result.error || 'Duyuru oluşturulamadı', 'error');
+        addToast(result.error || (editingAnnouncementId ? 'Duyuru güncellenemedi' : 'Duyuru oluşturulamadı'), 'error');
       }
     } catch (error) {
-      addToast('Duyuru oluşturulurken hata oluştu', 'error');
+      addToast(editingAnnouncementId ? 'Duyuru güncellenirken hata oluştu' : 'Duyuru oluşturulurken hata oluştu', 'error');
     } finally {
       setSubmittingAnnouncement(false);
     }
@@ -127,7 +140,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({
 
   return (
     <div className="min-h-screen bg-[#F0F0EB] dark:bg-[#0F172A] p-3 md:p-6 transition-colors duration-150">
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
         <header className="mb-5 animate-fadeIn">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -141,7 +154,6 @@ const DashboardView: React.FC<DashboardViewProps> = ({
                 <p className="text-base text-neutral-600 dark:text-neutral-300">
                   Hoş geldin, <span className="font-semibold text-slate-700 dark:text-slate-400">{userInfo.name.split(' ')[0]}</span>
                 </p>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400">{formatDate(currentTime)}</p>
               </div>
               <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 font-bold text-lg shadow-sm border-2 border-white dark:border-neutral-700">
                 {userInfo.name.charAt(0).toUpperCase()}
@@ -149,6 +161,9 @@ const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
 
             <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-neutral-500 dark:text-neutral-400 mr-2 whitespace-nowrap hidden md:block">
+                {formatDate(currentTime)}
+              </span>
               <div className="w-full md:w-64">
                 <SearchBar onSearch={handleSearch} />
               </div>
@@ -157,61 +172,115 @@ const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </header>
 
-        {/* Quick Stats Bar */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-          <StatCard
-            icon="●"
-            label="Aktif Görevler"
-            value={activeTasks.length}
-            delay={150}
-            trend={activeTasks.length < pendingTasks.length ? 'down' : 'neutral'}
-            trendValue={activeTasks.length < pendingTasks.length ? `${completedTasks.size} tamamlandı` : ''}
-          />
-          <StatCard
-            icon="◯"
-            label="İzin Günleri"
-            value={leaveBalance.annual + leaveBalance.sick + leaveBalance.personal}
-            delay={200}
-          />
-          <StatCard
-            icon="○"
-            label="Çalışanlar"
-            value={employeeCount ?? '—'}
-            delay={225}
-            onClick={canOpenEmployeeHub ? handleNavigateToEmployees : undefined}
-            ctaLabel={canOpenEmployeeHub ? 'Yönet' : undefined}
-            disabled={!canOpenEmployeeHub}
-            ariaLabel={canOpenEmployeeHub ? 'Çalışan yönetim merkezini aç' : undefined}
-          />
-          <StatCard
-            icon="◯"
-            label="Duyurular"
-            value={announcements.length}
-            delay={250}
-            trend="neutral"
-            trendValue="Yeni"
-          />
-        </div>
+        <div className="flex flex-col md:flex-row gap-6">
+          {/* Left Sidebar Actions */}
+          <aside className="w-full md:w-48 flex-shrink-0">
+            <div className="sticky top-6 flex flex-col gap-3">
+              <button
+                onClick={handleNavigateToLeaves}
+                className="w-full px-4 py-3 bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm hover:shadow-md flex items-center justify-center md:justify-start space-x-2 group"
+                title="İzin Yönetimi"
+              >
+                <span>🎫</span>
+                <span>İzinler</span>
+              </button>
 
-        {/* Bento Grid Layout */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 auto-rows-[minmax(120px,auto)]">
-          {DEFAULT_WIDGET_ORDER.map((widgetId, index) => renderWidget({
-            widgetId,
-            dashboardData,
-            delay: index * 50,
-            completedTasks,
-            filteredTasks,
-            filteredAnnouncements,
-            activeTasks,
-            handleTaskComplete,
-            getPriorityColor,
-            getPriorityIcon,
-            addToast,
-            setShowAssetManagement,
-            onCalendarDateSelect: (date) => setSelectedCalendarDate(date),
-            onAnnouncementClick: (announcement: any) => setSelectedAnnouncement(announcement),
-            onAddAnnouncementClick: () => setShowAnnouncementForm(true),
-          }))}
+              {((dashboardData.userInfo.userRole === 'admin') || (dashboardData.userInfo.role && dashboardData.userInfo.role.includes('İK'))) && (
+                <button
+                  onClick={handleNavigateToEmployees}
+                  className="w-full px-4 py-3 bg-slate-700 hover:bg-slate-800 dark:bg-slate-600 dark:hover:bg-slate-700 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm hover:shadow-md flex items-center justify-center md:justify-start space-x-2 group"
+                  title="Çalışan Yönetim Paneli"
+                >
+                  <span>👥</span>
+                  <span>Çalışan Paneli</span>
+                </button>
+              )}
+
+              <button
+                onClick={handleLogout}
+                className="w-full px-4 py-3 bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm hover:shadow-md flex items-center justify-center md:justify-start space-x-2 group"
+                title="Çıkış Yap"
+              >
+                <span>🚪</span>
+                <span>Çıkış</span>
+              </button>
+            </div>
+          </aside>
+
+          {/* Main Content */}
+          <div className="flex-1 min-w-0">
+            {/* Quick Stats Bar */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+              <StatCard
+                icon="●"
+                label="Aktif Görevler"
+                value={activeTasks.length}
+                delay={150}
+                trend={activeTasks.length < pendingTasks.length ? 'down' : 'neutral'}
+                trendValue={activeTasks.length < pendingTasks.length ? `${completedTasks.size} tamamlandı` : ''}
+              />
+              <StatCard
+                icon="◯"
+                label="İzin Günleri"
+                value={leaveBalance.annual + leaveBalance.sick + leaveBalance.personal}
+                delay={200}
+              />
+              <StatCard
+                icon="○"
+                label="Çalışanlar"
+                value={employeeCount ?? '—'}
+                delay={225}
+                onClick={canOpenEmployeeHub ? handleNavigateToEmployees : undefined}
+                ctaLabel={canOpenEmployeeHub ? 'Yönet' : undefined}
+                disabled={!canOpenEmployeeHub}
+                ariaLabel={canOpenEmployeeHub ? 'Çalışan yönetim merkezini aç' : undefined}
+              />
+              <StatCard
+                icon="◯"
+                label="Duyurular"
+                value={announcements.length}
+                delay={250}
+                trend="neutral"
+                trendValue="Yeni"
+              />
+            </div>
+
+            {/* Bento Grid Layout */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 auto-rows-[minmax(120px,auto)]">
+              {DEFAULT_WIDGET_ORDER.map((widgetId, index) => renderWidget({
+                widgetId,
+                dashboardData,
+                delay: index * 50,
+                completedTasks,
+                filteredTasks,
+                filteredAnnouncements,
+                activeTasks,
+                handleTaskComplete,
+                getPriorityColor,
+                getPriorityIcon,
+                addToast,
+                setShowAssetManagement,
+                onCalendarDateSelect: (date) => setSelectedCalendarDate(date),
+                onAnnouncementClick: (announcement: any) => setSelectedAnnouncement(announcement),
+                onAddAnnouncementClick: () => {
+                  setEditingAnnouncementId(null);
+                  setAnnouncementForm({ title: '', description: '', category: 'Genel', announcement_date: new Date().toISOString().split('T')[0] });
+                  setShowAnnouncementForm(true);
+                },
+                onAnnouncementEdit: (announcement: any) => {
+                  setEditingAnnouncementId(announcement.id);
+                  setAnnouncementForm({
+                    title: announcement.title,
+                    description: announcement.description || '',
+                    category: announcement.category,
+                    announcement_date: announcement.date ? announcement.date.split(' ')[0] : new Date().toISOString().split('T')[0],
+                  });
+                  setShowAnnouncementForm(true);
+                },
+                onAnnouncementDelete: (id: number) => setShowDeleteConfirm(id),
+              }))}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -222,7 +291,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({
           onClick={() => setSelectedAnnouncement(null)}
         >
           <div
-            className="bg-stone-50 dark:bg-neutral-800 rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col animate-fadeInUp"
+            className="bg-white dark:bg-slate-900 rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col animate-fadeInUp"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header with Close Button */}
@@ -245,13 +314,43 @@ const DashboardView: React.FC<DashboardViewProps> = ({
                   {selectedAnnouncement.title}
                 </h2>
               </div>
-              <button
-                onClick={() => setSelectedAnnouncement(null)}
-                className="ml-4 w-10 h-10 flex items-center justify-center rounded-md bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-600 dark:text-neutral-300 transition-colors"
-                aria-label="Kapat"
-              >
-                <span className="text-xl">✕</span>
-              </button>
+              <div className="flex items-center space-x-2">
+                {isAdmin && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setSelectedAnnouncement(null);
+                        setEditingAnnouncementId(selectedAnnouncement.id);
+                        setAnnouncementForm({
+                          title: selectedAnnouncement.title,
+                          description: selectedAnnouncement.description || '',
+                          category: selectedAnnouncement.category,
+                          announcement_date: selectedAnnouncement.date ? selectedAnnouncement.date.split(' ')[0] : new Date().toISOString().split('T')[0],
+                        });
+                        setShowAnnouncementForm(true);
+                      }}
+                      className="w-10 h-10 flex items-center justify-center rounded-md bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-900/50 text-amber-600 dark:text-amber-400 transition-colors"
+                      title="Düzenle"
+                    >
+                      <span className="text-lg">✎</span>
+                    </button>
+                    <button
+                      onClick={() => setShowDeleteConfirm(selectedAnnouncement.id)}
+                      className="w-10 h-10 flex items-center justify-center rounded-md bg-rose-100 dark:bg-rose-900/30 hover:bg-rose-200 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 transition-colors"
+                      title="Sil"
+                    >
+                      <span className="text-lg">🗑️</span>
+                    </button>
+                  </>
+                )}
+                <button
+                  onClick={() => setSelectedAnnouncement(null)}
+                  className="ml-2 w-10 h-10 flex items-center justify-center rounded-md bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-600 dark:text-neutral-300 transition-colors"
+                  aria-label="Kapat"
+                >
+                  <span className="text-xl">✕</span>
+                </button>
+              </div>
             </div>
 
             {/* Content */}
@@ -281,6 +380,59 @@ const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       )}
 
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div
+          className="fixed inset-0 bg-black/50 dark:bg-black/70 z-[110] flex items-center justify-center p-4 animate-fadeIn"
+          onClick={() => setShowDeleteConfirm(null)}
+        >
+          <div
+            className="bg-white dark:bg-neutral-800 rounded-lg shadow-xl max-w-sm w-full p-6 text-center transform transition-all scale-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-16 h-16 bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
+              🗑️
+            </div>
+            <h3 className="text-lg font-bold text-neutral-900 dark:text-white mb-2">
+              Duyuruyu Sil
+            </h3>
+            <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-6">
+              Bu duyuruyu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
+            </p>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowDeleteConfirm(null)}
+                className="flex-1 px-4 py-2 bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-600 font-medium transition-colors"
+              >
+                Hayır, İptal
+              </button>
+              <button
+                onClick={async () => {
+                  if (showDeleteConfirm) {
+                    try {
+                      const result = await api.deleteAnnouncement(showDeleteConfirm);
+                      if (result.status === 200) {
+                        addToast('Duyuru başarıyla silindi', 'success');
+                        setShowDeleteConfirm(null);
+                        setSelectedAnnouncement(null);
+                        window.location.reload();
+                      } else {
+                        addToast('Duyuru silinemedi', 'error');
+                      }
+                    } catch (error) {
+                      addToast('Bir hata oluştu', 'error');
+                    }
+                  }
+                }}
+                className="flex-1 px-4 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 font-medium shadow-sm transition-colors"
+              >
+                Evet, Sil
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Announcement Create Modal */}
       {showAnnouncementForm && (
         <div
@@ -291,14 +443,14 @@ const DashboardView: React.FC<DashboardViewProps> = ({
           }}
         >
           <div
-            className="bg-stone-50 dark:bg-neutral-800 rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col animate-fadeInUp"
+            className="bg-white dark:bg-slate-900 rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col animate-fadeInUp"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-neutral-200 dark:border-neutral-700">
               <div>
                 <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">
-                  📢 Yeni Duyuru Oluştur
+                  {editingAnnouncementId ? '✏️ Duyuru Düzenle' : '📢 Yeni Duyuru Oluştur'}
                 </h2>
                 <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
                   Duyurunun tüm detaylarını doldurun
@@ -390,7 +542,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({
                   disabled={submittingAnnouncement}
                   className="flex-1 px-4 py-3 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white text-sm font-semibold rounded-md transition-all duration-150 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {submittingAnnouncement ? 'Gönderiliyor...' : '📢 Duyuruyu Yayınla'}
+                  {submittingAnnouncement ? 'Kaydediliyor...' : (editingAnnouncementId ? '💾 Değişiklikleri Kaydet' : '📢 Duyuruyu Yayınla')}
                 </button>
               </div>
             </form>
@@ -533,33 +685,6 @@ const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
       )}
-
-      {/* Fixed Side Buttons */}
-      <div className="fixed right-4 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-3">
-        <button
-          onClick={handleNavigateToLeaves}
-          className="px-4 py-3 bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold rounded-md transition-all duration-150 shadow-lg hover:shadow-xl hover:scale-105 flex items-center space-x-2 group"
-          title="İzin Yönetimi"
-        >
-          <span className="hidden md:inline">İzinler</span>
-        </button>
-        {((dashboardData.userInfo.userRole === 'admin') || (dashboardData.userInfo.role && dashboardData.userInfo.role.includes('İK'))) && (
-          <button
-            onClick={handleNavigateToEmployees}
-            className="px-4 py-3 bg-slate-700 hover:bg-slate-800 dark:bg-slate-600 dark:hover:bg-slate-700 text-white text-sm font-semibold rounded-md transition-all duration-150 shadow-lg hover:shadow-xl hover:scale-105 flex items-center space-x-2 group"
-            title="Çalışan Yönetim Paneli"
-          >
-            <span className="hidden md:inline">Çalışan Paneli</span>
-          </button>
-        )}
-        <button
-          onClick={handleLogout}
-          className="px-4 py-3 bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold rounded-md transition-all duration-150 shadow-lg hover:shadow-xl hover:scale-105 flex items-center space-x-2 group"
-          title="Çıkış Yap"
-        >
-          <span className="hidden md:inline">Çıkış</span>
-        </button>
-      </div>
     </div>
   );
 };

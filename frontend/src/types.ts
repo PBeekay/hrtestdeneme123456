@@ -34,6 +34,7 @@ export interface Announcement {
   category: string;
   description?: string;
   author_name?: string;
+  updated_at?: string;
 }
 
 export interface WorkDay {

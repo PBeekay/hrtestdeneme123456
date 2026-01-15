@@ -21,6 +21,8 @@ interface WidgetRendererProps {
   onCalendarDateSelect?: (date: Date) => void;
   onAnnouncementClick?: (announcement: any) => void;
   onAddAnnouncementClick?: () => void;
+  onAnnouncementEdit?: (announcement: any) => void;
+  onAnnouncementDelete?: (id: number) => void;
 }
 
 export const renderWidget = (props: WidgetRendererProps): React.ReactNode | null => {
@@ -40,6 +42,8 @@ export const renderWidget = (props: WidgetRendererProps): React.ReactNode | null
     onCalendarDateSelect,
     onAnnouncementClick,
     onAddAnnouncementClick,
+    onAnnouncementEdit,
+    onAnnouncementDelete,
   } = props;
 
   const { userInfo, leaveBalance } = dashboardData;
@@ -389,7 +393,7 @@ export const renderWidget = (props: WidgetRendererProps): React.ReactNode | null
                       <div
                         key={announcement.id}
                         onClick={() => onAnnouncementClick?.(announcement)}
-                        className="p-2 bg-gradient-to-br from-white to-neutral-50 dark:from-neutral-700/50 dark:to-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-600 hover:shadow-sm hover:scale-[1.01] hover:border-primary-200 dark:hover:border-primary-700 transition-all duration-300 cursor-pointer group"
+                        className="p-3 bg-gradient-to-br from-white to-neutral-50 dark:from-neutral-700/50 dark:to-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-600 hover:shadow-sm hover:scale-[1.01] hover:border-primary-200 dark:hover:border-primary-700 transition-all duration-300 cursor-pointer group"
                       >
                         <div className="flex items-start justify-between mb-1.5">
                           <span className="text-[9px] text-neutral-500 dark:text-neutral-400">{announcement.date}</span>
@@ -397,9 +401,16 @@ export const renderWidget = (props: WidgetRendererProps): React.ReactNode | null
                         <h3 className="text-sm font-bold text-neutral-900 dark:text-white mb-1 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">{announcement.title}</h3>
                         <p className="text-[11px] text-neutral-600 dark:text-neutral-300 line-clamp-2">{announcement.description}</p>
                         <div className="mt-2 flex items-center justify-between">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-semibold bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400">
-                            {announcement.category}
-                          </span>
+                          <div className="flex items-center space-x-2">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-semibold bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400">
+                              {announcement.category}
+                            </span>
+                            {announcement.updated_at && (
+                              <span className="text-[9px] text-neutral-400 italic">
+                                (Düzenlendi: {announcement.updated_at.split(' ')[1] || announcement.updated_at})
+                              </span>
+                            )}
+                          </div>
                           <span className="text-primary-600 dark:text-primary-400 text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity">Devamını oku →</span>
                         </div>
                       </div>

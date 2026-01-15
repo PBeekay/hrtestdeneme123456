@@ -7,11 +7,11 @@ interface BentoCardProps {
   interactive?: boolean;
 }
 
-const BentoCard: React.FC<BentoCardProps> = ({ 
-  children, 
-  className = '', 
+const BentoCard: React.FC<BentoCardProps> = ({
+  children,
+  className = '',
   delay = 0,
-  interactive = true 
+  interactive = true
 }) => {
   return (
     <div
@@ -30,7 +30,7 @@ const BentoCard: React.FC<BentoCardProps> = ({
         animate-fadeInUp
         ${className}
       `}
-      style={{ 
+      style={{
         animationDelay: `${delay}ms`,
         animationFillMode: 'both'
       }}

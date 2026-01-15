@@ -29,6 +29,7 @@ Modern, kullanıcı dostu B2B İnsan Kaynakları Yönetim Sistemi. Bento Grid ta
 - **Görev Yönetimi** - Öncelikli görev takibi ve tamamlama
 - **Performans Metrikleri** - Gerçek zamanlı performans göstergeleri
 - **Duyurular** - Şirket içi duyuru sistemi
+- **Duyuru Yönetimi** - (Admin) Duyuru oluşturma, düzenleme ve silme desteği
 
 ### 🎯 Gelişmiş Özellikler
 - **Canlı Saat** - Türkçe tarih ve saat formatı
@@ -210,6 +211,11 @@ Backend çalışırken: http://localhost:8000/docs
 ### Dashboard
 - `GET /api/dashboard` - Dashboard verileri
 - `PUT /api/tasks/{id}/status` - Görev durumu güncelleme
+
+### Duyurular (Admin)
+- `POST /api/announcements` - Yeni duyuru oluştur
+- `PUT /api/announcements/{id}` - Duyuru güncelle
+- `DELETE /api/announcements/{id}` - Duyuru sil
 
 ## 🔐 Güvenlik Notları
 

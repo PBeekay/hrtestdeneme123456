@@ -13,61 +13,32 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from auth import create_access_token, verify_token
 from logger import logger, log_auth_attempt, log_request, log_error
-from database import (
-    create_announcement,
-    authenticate_user,
-    get_user_dashboard_data,
-    get_employee_dashboard_data,
-    create_session,
-    get_reminders,
-    validate_session,
-    delete_session,
-    update_task_status,
-    test_connection,
-    get_work_schedule,
-    get_leave_requests,
-    get_all_leave_requests,
-    create_leave_request,
-    approve_leave_request,
-    get_user_widgets,
-    update_user_widgets,
-    get_db_connection,
-    # Zimmet (Asset Assignment) functions
-    get_asset_categories,
-    get_employee_assets,
-    get_all_assets,
-    create_asset_assignment,
-    update_asset_assignment,
-    return_asset,
-    delete_asset_assignment,
-    # Employee Management functions
-    get_all_employees,
-    get_employee_stats,
-    create_employee,
-    update_employee,
-    delete_employee,
-
-    # Announcements
-    create_announcement,
-    upload_employee_document,
-    update_employee_document,
-    delete_employee_document,
-    approve_employee_document,
-    # User Management
-    get_all_users,
-    reset_user_password,
-    # Department Management
-    get_all_departments,
-    # System Settings
-    get_system_settings,
-    update_system_settings,
-    # Calendar & Reminders
-    get_personal_reminders,
-    create_personal_reminder,
-    update_personal_reminder,
-    delete_personal_reminder,
-    get_upcoming_team_events
+from repositories import (
+    DatabaseManager,
+    UserRepository,
+    LeaveRepository,
+    TaskRepository,
+    AssetRepository,
+    DashboardRepository,
+    AnnouncementRepository,
+    SessionRepository,
+    WorkScheduleRepository,
+    ReminderRepository,
+    DocumentRepository
 )
+
+# Initialize Repositories
+db_manager = DatabaseManager()
+user_repo = UserRepository()
+leave_repo = LeaveRepository()
+task_repo = TaskRepository()
+asset_repo = AssetRepository()
+dashboard_repo = DashboardRepository()
+announcement_repo = AnnouncementRepository()
+session_repo = SessionRepository()
+schedule_repo = WorkScheduleRepository()
+reminder_repo = ReminderRepository()
+doc_repo = DocumentRepository()
 
 app = FastAPI(title="HR Dashboard API")
 
@@ -99,8 +70,13 @@ async def startup_event():
     logger.info("🚀 HR Dashboard API Starting...")
     logger.info("=" * 60)
     logger.info("📊 Testing database connection...")
-    test_connection()
-    logger.info("✅ Database connection pool initialized")
+    logger.info("📊 Testing database connection...")
+    conn = db_manager.get_connection()
+    if conn:
+        conn.close()
+        logger.info("✅ Database connection pool initialized")
+    else:
+        logger.error("❌ Database connection failed")
     logger.info("🔒 JWT authentication enabled (30 min expiration)")
     logger.info("🚦 Rate limiting active (5 login attempts/minute)")
     logger.info("=" * 60)
@@ -137,6 +113,7 @@ class Announcement(BaseModel):
     id: int
     title: str
     date: str
+    updated_at: Optional[str] = None
     category: str
 
 
@@ -182,7 +159,7 @@ def health_check():
     """
     try:
         # Check database connection
-        conn = get_db_connection()
+        conn = db_manager.get_connection()
         db_status = "healthy" if conn else "unhealthy"
         if conn:
             conn.close()
@@ -258,7 +235,7 @@ def login(request: Request, credentials: LoginRequest):
     logger.info(f"🔐 Login attempt | Username: {credentials.username} | IP: {client_ip}")
     
     # Authenticate user against database
-    user = authenticate_user(credentials.username, credentials.password)
+    user = user_repo.authenticate(credentials.username, credentials.password)
     
     if user:
         # Determine application role for authorization checks
@@ -275,7 +252,7 @@ def login(request: Request, credentials: LoginRequest):
         
         # Also store session in database for tracking (optional)
         expires_at = datetime.now() + timedelta(minutes=30)
-        create_session(user['id'], token, expires_at)
+        session_repo.create(user['id'], token, expires_at)
         
         # Log successful login
         log_auth_attempt(credentials.username, True, client_ip)
@@ -303,7 +280,7 @@ def logout(logout_req: LogoutRequest):
     """
     Logout endpoint - invalidate session token
     """
-    delete_session(logout_req.token)
+    session_repo.delete(logout_req.token)
     return {
         "success": True,
         "message": "Çıkış başarılı"
@@ -325,9 +302,9 @@ def get_dashboard_data(current_user: dict = Depends(get_current_user)):
     
     try:
         if user_role == 'employee':
-            dashboard_data = get_employee_dashboard_data(user_id)
+            dashboard_data = dashboard_repo.get_employee_data(user_id)
         else:
-            dashboard_data = get_user_dashboard_data(user_id)
+            dashboard_data = dashboard_repo.get_user_data(user_id)
         
         if dashboard_data:
             logger.info(f"✅ Dashboard data loaded | User: {username}")
@@ -354,7 +331,7 @@ def update_task(task_id: int, status: str):
             detail="Geçersiz durum. Geçerli değerler: pending, completed, cancelled"
         )
     
-    success = update_task_status(task_id, status)
+    success = task_repo.update_status(task_id, status)
     
     if success:
         return {
@@ -383,14 +360,7 @@ def create_leave_req(user_id: int, leave_request: LeaveRequestCreate):
     """
     Create a new leave request (Employee)
     """
-    request_id = create_leave_request(
-        user_id,
-        leave_request.leaveType,
-        leave_request.startDate,
-        leave_request.endDate,
-        leave_request.totalDays,
-        leave_request.reason
-    )
+    request_id = leave_repo.create_request(user_id, leave_request.dict())
     
     if request_id:
         return {
@@ -428,13 +398,13 @@ def get_leave_reqs(
     # - If Employee -> Get ONLY own requests
     
     if requester_role == 'admin' and not user_id:
-        requests = get_all_leave_requests(status)
+        requests = leave_repo.get_all_requests(status)
     else:
         # Security check: Employees can only view their own requests
         if requester_role != 'admin' and target_user_id != requester_id:
              raise HTTPException(status_code=403, detail="Başkasının izinlerini görüntüleme yetkiniz yok")
         
-        requests = get_leave_requests(target_user_id, status)
+        requests = leave_repo.get_requests(target_user_id, status)
 
     return {"leaveRequests": requests}
 
@@ -444,7 +414,7 @@ def approve_leave(request_id: int, admin_id: int, approved: bool, reason: Option
     """
     Approve or reject leave request (Admin only)
     """
-    success = approve_leave_request(request_id, admin_id, approved, reason)
+    success = leave_repo.approve_request(request_id, admin_id, approved, reason)
     
     if success:
         status_text = "onaylandı" if approved else "reddedildi"
@@ -472,7 +442,7 @@ def get_widgets(user_id: int):
     """
     Kullanıcının widget yapılandırmasını döndürür
     """
-    widgets = get_user_widgets(user_id)
+    widgets = dashboard_repo.get_widgets(user_id)
     return {"widgets": widgets}
 
 
@@ -482,7 +452,7 @@ def update_widgets(user_id: int, widgets: List[WidgetConfig]):
     Kullanıcının widget yapılandırmasını günceller
     """
     widget_list = [w.dict() for w in widgets]
-    success = update_user_widgets(user_id, widget_list)
+    success = dashboard_repo.update_widgets(user_id, widget_list)
     
     if success:
         return {
@@ -501,7 +471,7 @@ def get_work_sched(user_id: int, days: int = 7):
     """
     Çalışanın belirtilen gün sayısı için çalışma takvimini döndürür
     """
-    schedule = get_work_schedule(user_id, days)
+    schedule = schedule_repo.get_schedule(user_id, days)
     return {"workSchedule": schedule}
 
 
@@ -536,7 +506,7 @@ def get_categories(current_user: dict = Depends(get_current_user)):
     Tüm zimmet kategorilerini döndürür
     """
     logger.info(f"📦 Asset categories request | User: {current_user.get('sub')}")
-    categories = get_asset_categories()
+    categories = asset_repo.get_categories()
     return {"categories": categories}
 
 
@@ -551,8 +521,8 @@ def get_my_assets(current_user: dict = Depends(get_current_user), status: Option
     logger.info(f"📦 My assets request | User: {username} | Status filter: {status}")
     
     try:
-        assets = get_employee_assets(user_id, status)
-        stats = get_asset_statistics(user_id)
+        assets = asset_repo.get_by_employee(user_id, status)
+        stats = asset_repo.get_statistics(user_id)
         
         return {
             "assets": assets,
@@ -581,8 +551,8 @@ def get_all_asset_assignments(
     logger.info(f"📦 All assets request | Admin: {username} | Status filter: {status}")
     
     try:
-        assets = get_all_assets(status)
-        stats = get_asset_statistics()
+        assets = asset_repo.get_all(status)
+        stats = asset_repo.get_statistics()
         
         return {
             "assets": assets,
@@ -612,18 +582,7 @@ def create_asset(
     logger.info(f"📦 Creating asset | Admin: {username} | Asset: {assignment.asset_name}")
     
     try:
-        asset_id = create_asset_assignment(
-            employee_id=assignment.employee_id,
-            asset_name=assignment.asset_name,
-            category_id=assignment.category_id,
-            assigned_date=assignment.assigned_date,
-            document_url=assignment.document_url,
-            assigned_by=admin_id,
-            serial_number=assignment.serial_number,
-            description=assignment.description,
-            document_filename=assignment.document_filename,
-            notes=assignment.notes
-        )
+        asset_id = asset_repo.create_assignment(assignment.dict())
         
         if asset_id:
             logger.info(f"✅ Asset created | ID: {asset_id} | Admin: {username}")
@@ -658,10 +617,7 @@ def update_asset(
     logger.info(f"📦 Updating asset | ID: {asset_id} | Admin: {username}")
     
     try:
-        success = update_asset_assignment(
-            asset_id=asset_id,
-            **update_data.dict(exclude_unset=True)
-        )
+        success = asset_repo.update_assignment(asset_id, update_data.dict(exclude_unset=True))
         
         if success:
             logger.info(f"✅ Asset updated | ID: {asset_id} | Admin: {username}")
@@ -696,7 +652,7 @@ def return_asset_endpoint(
     logger.info(f"📦 Returning asset | ID: {asset_id} | Admin: {username}")
     
     try:
-        success = return_asset(asset_id)
+        success = asset_repo.return_asset(asset_id)
         
         if success:
             logger.info(f"✅ Asset returned | ID: {asset_id} | Admin: {username}")
@@ -730,8 +686,10 @@ def delete_asset(
     
     logger.info(f"📦 Deleting asset | ID: {asset_id} | Admin: {username}")
     
+    logger.info(f"📦 Deleting asset | ID: {asset_id} | Admin: {username}")
+    
     try:
-        success = delete_asset_assignment(asset_id)
+        success = asset_repo.delete_assignment(asset_id)
         
         if success:
             logger.info(f"✅ Asset deleted | ID: {asset_id} | Admin: {username}")
@@ -873,7 +831,7 @@ def get_employees(current_user: dict = Depends(get_current_user)):
     logger.info(f"👥 Employees list request | Admin: {username}")
     
     try:
-        employees = get_all_employees()
+        employees = user_repo.get_all_employees()
         logger.info(f"✅ Retrieved {len(employees)} employees | Admin: {username}")
         return employees
     except Exception as e:
@@ -897,7 +855,7 @@ def get_employee_statistics(current_user: dict = Depends(get_current_user)):
     logger.info(f"📊 Employee stats request | Admin: {username}")
     
     try:
-        stats = get_employee_stats()
+        stats = user_repo.get_employee_stats()
         logger.info(f"✅ Employee stats retrieved | Admin: {username}")
         return stats
     except Exception as e:
@@ -932,17 +890,7 @@ def create_new_employee(
         if '@' not in employee_data.email:
             raise HTTPException(status_code=400, detail="Geçerli bir e-posta adresi giriniz")
         
-        employee_id = create_employee(
-            name=employee_data.name,
-            email=employee_data.email,
-            department=employee_data.department,
-            role=employee_data.role,
-            phone=employee_data.phone,
-            manager=employee_data.manager,
-            location=employee_data.location,
-            start_date=employee_data.startDate,
-            status=employee_data.status
-        )
+        employee_id = user_repo.create_employee(employee_data.dict())
         
         if employee_id:
             logger.info(f"✅ Employee created | ID: {employee_id} | Admin: {username}")
@@ -980,18 +928,7 @@ def update_employee_info(
     logger.info(f"✏️ Updating employee {employee_id} | Admin: {username}")
     
     try:
-        success = update_employee(
-            employee_id=employee_id,
-            name=employee_data.name,
-            email=employee_data.email,
-            department=employee_data.department,
-            role=employee_data.role,
-            phone=employee_data.phone,
-            manager=employee_data.manager,
-            location=employee_data.location,
-            start_date=employee_data.startDate,
-            status=employee_data.status
-        )
+        success = user_repo.update_employee(employee_id, employee_data.dict(exclude_unset=True))
         
         if success:
             logger.info(f"✅ Employee updated | ID: {employee_id} | Admin: {username}")
@@ -1035,7 +972,7 @@ def delete_employee_info(
     logger.info(f"🗑️ {action.capitalize()}ing employee {employee_id} | Admin: {username}")
     
     try:
-        success = delete_employee(employee_id, deactivate_only)
+        success = user_repo.delete_employee(employee_id, deactivate_only)
         
         if success:
             logger.info(f"✅ Employee {action}ed | ID: {employee_id} | Admin: {username}")
@@ -1074,12 +1011,13 @@ def create_new_announcement(
         if not announcement_data.title or not announcement_data.category:
             raise HTTPException(status_code=400, detail="Başlık ve kategori zorunludur")
         
+        
         admin_id = current_user.get('user_id')
-        announcement_id = create_announcement(
+        announcement_id = announcement_repo.create(
             title=announcement_data.title,
             content=announcement_data.content or '',
             category=announcement_data.category,
-            announcement_date=datetime.now().strftime('%Y-%m-%d %H:%M'),
+            date=datetime.now().strftime('%Y-%m-%d %H:%M'),
             created_by=admin_id
         )
         
@@ -1100,6 +1038,86 @@ def create_new_announcement(
         raise HTTPException(status_code=500, detail="Duyuru oluşturulurken hata oluştu")
 
 
+@app.put("/api/announcements/{announcement_id}")
+def update_announcement(
+    announcement_id: int,
+    announcement_data: AnnouncementCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Duyuruyu günceller (Sadece admin).
+    """
+    user_role = current_user.get('role')
+    username = current_user.get('sub')
+    
+    if user_role != 'admin':
+        logger.warning(f"❌ Unauthorized announcement update attempt | User: {username}")
+        raise HTTPException(status_code=403, detail="Bu işlem için yönetici yetkisi gerekli")
+    
+    logger.info(f"✏️ Updating announcement {announcement_id} | Admin: {username}")
+    
+    try:
+        if not announcement_data.title or not announcement_data.category:
+            raise HTTPException(status_code=400, detail="Başlık ve kategori zorunludur")
+        
+        success = announcement_repo.update(
+            id=announcement_id,
+            title=announcement_data.title,
+            content=announcement_data.content or '',
+            category=announcement_data.category,
+            date=announcement_data.announcement_date
+        )
+        
+        if success:
+            logger.info(f"✅ Announcement updated | ID: {announcement_id} | Admin: {username}")
+            return {
+                "success": True,
+                "message": "Duyuru başarıyla güncellendi"
+            }
+        else:
+            logger.warning(f"❌ Announcement update failed | ID: {announcement_id} | Admin: {username}")
+            raise HTTPException(status_code=404, detail="Duyuru bulunamadı")
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error(e, f"Update announcement {announcement_id} by admin {username}")
+        raise HTTPException(status_code=500, detail="Duyuru güncellenirken hata oluştu")
+
+
+@app.delete("/api/announcements/{announcement_id}")
+def delete_announcement(
+    announcement_id: int,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Duyuruyu siler (Sadece admin).
+    """
+    user_role = current_user.get('role')
+    username = current_user.get('sub')
+    
+    if user_role != 'admin':
+        logger.warning(f"❌ Unauthorized announcement delete attempt | User: {username}")
+        raise HTTPException(status_code=403, detail="Bu işlem için yönetici yetkisi gerekli")
+    
+    logger.info(f"🗑️ Deleting announcement {announcement_id} | Admin: {username}")
+    
+    try:
+        success = announcement_repo.delete(announcement_id)
+        
+        if success:
+            logger.info(f"✅ Announcement deleted | ID: {announcement_id} | Admin: {username}")
+            return {
+                "success": True,
+                "message": "Duyuru silindi"
+            }
+        else:
+            logger.warning(f"❌ Announcement delete failed | ID: {announcement_id} | Admin: {username}")
+            raise HTTPException(status_code=404, detail="Duyuru bulunamadı")
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error(e, f"Delete announcement {announcement_id} by admin {username}")
+        raise HTTPException(status_code=500, detail="Duyuru silinirken hata oluştu")
 
 
 
@@ -1119,7 +1137,7 @@ def get_reminders_endpoint(current_user: dict = Depends(get_current_user)):
     logger.info(f"🔔 Getting reminders | Admin: {username}")
     
     try:
-        reminders = get_reminders(admin_id)
+        reminders = reminder_repo.get_reminders(admin_id)
         logger.info(f"✅ Retrieved {len(reminders)} reminders | Admin: {username}")
         return reminders
     except Exception as e:
@@ -1156,7 +1174,7 @@ def upload_document_to_employee(
     logger.info(f"📄 Uploading document to employee {employee_id} | Admin: {username} | Title: {document_data.title}")
     
     try:
-        doc_id = upload_employee_document(
+        doc_id = doc_repo.upload(
             employee_id=employee_id,
             title=document_data.title.strip(),
             doc_type=document_data.type,
@@ -1206,11 +1224,10 @@ def update_document(
     logger.info(f"📝 Updating document {document_id} for employee {employee_id} | Admin: {username}")
     
     try:
-        success = update_employee_document(
-            document_id=document_id,
-            title=document_data.title.strip(),
-            doc_type=document_data.type
-        )
+        success = doc_repo.update(document_id, {
+            "title": document_data.title.strip(),
+            "type": document_data.type
+        })
         
         if success:
             logger.info(f"✅ Document updated | Doc ID: {document_id} | Admin: {username}")
@@ -1247,7 +1264,7 @@ def delete_document(
     logger.info(f"🗑️ Deleting document {document_id} for employee {employee_id} | Admin: {username}")
     
     try:
-        success = delete_employee_document(document_id)
+        success = doc_repo.delete(document_id)
         
         if success:
             logger.info(f"✅ Document deleted | Doc ID: {document_id} | Admin: {username}")
@@ -1292,7 +1309,7 @@ def approve_document(
     logger.info(f"✅ {action.capitalize()}ing document {document_id} for employee {employee_id} | Admin: {username}")
     
     try:
-        success = approve_employee_document(
+        success = doc_repo.approve(
             document_id=document_id,
             approved_by=admin_id,
             approved=approval_data.approved,
@@ -1330,7 +1347,7 @@ def get_personal_reminders_endpoint(current_user: dict = Depends(get_current_use
     Kullanıcının kişisel hatırlatıcılarını getirir
     """
     user_id = current_user.get('user_id')
-    return get_personal_reminders(user_id)
+    return reminder_repo.get_personal(user_id)
 
 @app.post("/api/reminders/personal")
 def create_personal_reminder_endpoint(
@@ -1341,7 +1358,7 @@ def create_personal_reminder_endpoint(
     Yeni kişisel hatırlatıcı oluşturur
     """
     user_id = current_user.get('user_id')
-    reminder_id = create_personal_reminder(user_id, reminder.title, reminder.date)
+    reminder_id = reminder_repo.create_personal(user_id, reminder.title, reminder.date)
     if reminder_id:
         return {"success": True, "id": reminder_id}
     else:
@@ -1356,7 +1373,7 @@ def update_personal_reminder_endpoint(
     """
     Hatırlatıcı durumunu günceller (tamamlandı/tamamlanmadı)
     """
-    success = update_personal_reminder(reminder_id, status.is_completed)
+    success = reminder_repo.update_status(reminder_id, status.is_completed)
     if success:
         return {"success": True}
     else:
@@ -1370,7 +1387,7 @@ def delete_personal_reminder_endpoint(
     """
     Hatırlatıcıyı siler
     """
-    success = delete_personal_reminder(reminder_id)
+    success = reminder_repo.delete(reminder_id)
     if success:
         return {"success": True}
     else:
@@ -1381,7 +1398,7 @@ def get_upcoming_events_endpoint(current_user: dict = Depends(get_current_user))
     """
     Yaklaşan doğum günleri ve iş yıldönümlerini getirir
     """
-    return get_upcoming_team_events()
+    return user_repo.get_upcoming_events()
 
 @app.get("/api/calendar/events")
 def get_calendar_events_endpoint(current_user: dict = Depends(get_current_user)):
@@ -1392,10 +1409,10 @@ def get_calendar_events_endpoint(current_user: dict = Depends(get_current_user))
     
     try:
         # Get leaves
-        leaves = get_leave_requests(user_id, status='approved')
+        leaves = leave_repo.get_requests(user_id, status='approved')
         
         # Get personal reminders
-        reminders = get_personal_reminders(user_id)
+        reminders = reminder_repo.get_personal(user_id)
         
         # Format for FullCalendar
         events = []

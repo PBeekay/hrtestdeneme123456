@@ -298,6 +298,7 @@ def get_active_announcements(limit: int = 10) -> List[Dict[str, Any]]:
                         a.content as description,
                         a.category, 
                         DATE_FORMAT(a.announcement_date, '%%Y-%%m-%%d %%H:%%i') AS `date`,
+                        DATE_FORMAT(a.updated_at, '%%Y-%%m-%%d %%H:%%i') AS `updated_at`,
                         COALESCE(u.full_name, 'Sistem') as author_name
                     FROM announcements a
                     LEFT JOIN users u ON a.created_by = u.id
@@ -317,6 +318,7 @@ def get_active_announcements(limit: int = 10) -> List[Dict[str, Any]]:
                         content as description,
                         category, 
                         DATE_FORMAT(announcement_date, '%%Y-%%m-%%d %%H:%%i') AS `date`,
+                        DATE_FORMAT(updated_at, '%%Y-%%m-%%d %%H:%%i') AS `updated_at`,
                         'Sistem' as author_name
                     FROM announcements 
                     WHERE is_active = TRUE
