@@ -82,12 +82,47 @@ async def startup_event():
     logger.info("=" * 60)
 
 
-class UserInfo(BaseModel):
+
+# ==================== USER MODELS (INHERITANCE STRUCTURE) ====================
+
+class BaseUser(BaseModel):
+    """
+    Temel kullanıcı sınıfı - Tüm kullanıcı rollerinde ortak olan özellikler
+    """
     name: str
-    role: str
-    department: str
     email: str
-    avatar: str
+    role: str
+    avatar: Optional[str] = None
+    
+    def has_permission(self, permission: str) -> bool:
+        """Temel yetki kontrolü"""
+        return False
+
+class EmployeeUser(BaseUser):
+    """
+    Çalışan sınıfı - Sadece çalışanlara özel alanlar ve yetkiler
+    """
+    department: str
+    
+    def has_permission(self, permission: str) -> bool:
+        # Çalışanlar sadece temel izinlere sahiptir
+        return permission in ["create_leave_request", "view_own_data"]
+
+class AdminUser(BaseUser):
+    """
+    Yönetici sınıfı - Yönetimsel yetkiler
+    """
+    department: str
+    admin_level: int = 1
+    
+    def has_permission(self, permission: str) -> bool:
+        # Yöneticiler her yetkiye sahiptir
+        return True
+
+# Geriye dönük uyumluluk için UserInfo şimdilik EmployeeUser yapısını kullanabilir
+# Veya DashboardData içinde Union[AdminUser, EmployeeUser] kullanılabilir
+class UserInfo(EmployeeUser):
+    pass
 
 
 class LeaveBalance(BaseModel):
@@ -146,7 +181,7 @@ class LogoutRequest(BaseModel):
 def read_root():
     return {
         "message": "HR Dashboard API is running",
-        "version": "2.0",
+        "version": "2.1 (Inheritance Added)",
         "database": "MariaDB Connected"
     }
 
@@ -356,10 +391,24 @@ class LeaveRequestCreate(BaseModel):
 
 
 @app.post("/api/leave-requests")
-def create_leave_req(user_id: int, leave_request: LeaveRequestCreate):
+def create_leave_req(
+    leave_request: LeaveRequestCreate,
+    current_user: dict = Depends(get_current_user)
+):
     """
     Create a new leave request (Employee)
+    Secured: Can only be created by the currently logged in user
     """
+    # Yetki kontrolü (Inheritance ile gelen has_permission mantığını simüle ediyoruz)
+    user_role = current_user.get('role', 'employee')
+    user_id = current_user.get('user_id')
+    
+    # Burada user_role'e göre işlem yapılabilir
+    # Normalde bu modelleri request objesine bind edip user.has_permission() çağrılır
+    # Ancak JWT yapısında basit string kontrolü yaygındır.
+    
+    logger.info(f"📝 New leave request | User ID: {user_id} | Type: {leave_request.leaveType}")
+    
     request_id = leave_repo.create_request(user_id, leave_request.dict())
     
     if request_id:
