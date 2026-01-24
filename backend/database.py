@@ -13,10 +13,10 @@ load_dotenv()
 # Database configuration
 DB_CONFIG = {
     'host': os.getenv('DB_HOST', 'localhost'),
-    'port': int(os.getenv('DB_PORT', 3307)),  # MariaDB port
-    'user': os.getenv('DB_USER', 'hrapp'),
-    'password': os.getenv('DB_PASSWORD', 'hrpass123'),
-    'database': os.getenv('DB_NAME', 'hrtest_db'),
+    'port': int(os.getenv('DB_PORT', 3307)),
+    'user': os.getenv('DB_USER'),
+    'password': os.getenv('DB_PASSWORD'),
+    'database': os.getenv('DB_NAME'),
     'charset': 'utf8mb4',
     'cursorclass': DictCursor,
     'auth_plugin_map': {
@@ -25,6 +25,10 @@ DB_CONFIG = {
     },
     'client_flag': 0
 }
+
+# Validate critical configuration
+if not DB_CONFIG['user'] or not DB_CONFIG['password'] or not DB_CONFIG['database']:
+    raise ValueError("❌ Database credentials missing! Please check .env file.")
 
 # Create connection pool
 # This will maintain a pool of 2-10 connections

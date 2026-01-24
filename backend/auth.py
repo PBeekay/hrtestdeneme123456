@@ -12,7 +12,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # JWT Configuration
-SECRET_KEY = os.getenv('SECRET_KEY', 'hr-dashboard-secret-key-2025-CHANGE-IN-PRODUCTION')
+# JWT Configuration
+SECRET_KEY = os.getenv('SECRET_KEY')
+if not SECRET_KEY:
+    raise ValueError("❌ SECRET_KEY missing! Please check .env file.")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 

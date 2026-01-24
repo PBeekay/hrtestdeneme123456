@@ -76,19 +76,54 @@ class BaseRepository:
         self.db = DatabaseManager()
 
 class UserRepository(BaseRepository):
+    def __init__(self):
+        super().__init__()
+        self._ensure_schema()
+
+    def _ensure_schema(self):
+        try:
+            with self.db.get_cursor() as cursor:
+                # Check/Add start_date
+                try:
+                    cursor.execute("SELECT start_date FROM users LIMIT 1")
+                except:
+                    try:
+                        cursor.execute("ALTER TABLE users ADD COLUMN start_date DATETIME NULL")
+                        print("✅ Added start_date column to users table")
+                    except Exception as e:
+                        print(f"⚠️ Failed to add start_date column: {e}")
+
+                # Check/Add tc_no
+                try:
+                    cursor.execute("SELECT tc_no FROM users LIMIT 1")
+                except:
+                    try:
+                        cursor.execute("ALTER TABLE users ADD COLUMN tc_no VARCHAR(11) NULL")
+                        print("✅ Added tc_no column to users table")
+                    except Exception as e:
+                        print(f"⚠️ Failed to add tc_no column: {e}")
+        except Exception as e:
+            print(f"❌ Schema check error: {e}")
+
     def get_by_id(self, user_id: int) -> Optional[Dict[str, Any]]:
         try:
             with self.db.get_cursor() as cursor:
                 try:
                     cursor.execute(
-                        "SELECT id, username, full_name, email, role, department, avatar, user_role, start_date FROM users WHERE id = %s",
+                        "SELECT id, username, full_name, email, role, department, avatar, user_role, start_date, tc_no FROM users WHERE id = %s",
                         (user_id,)
                     )
                 except:
-                    cursor.execute(
-                        "SELECT id, username, full_name, email, role, department, avatar, user_role FROM users WHERE id = %s",
-                        (user_id,)
-                    )
+                    try:
+                        cursor.execute(
+                            "SELECT id, username, full_name, email, role, department, avatar, user_role, start_date FROM users WHERE id = %s",
+                            (user_id,)
+                        )
+                    except:
+                        cursor.execute(
+                            "SELECT id, username, full_name, email, role, department, avatar, user_role FROM users WHERE id = %s",
+                            (user_id,)
+                        )
                 return cursor.fetchone()
         except Exception as e:
             print(f"Get user error: {e}")
@@ -368,20 +403,45 @@ class UserRepository(BaseRepository):
             conn.close()
 
 class LeaveRepository(BaseRepository):
-    def get_balance(self, user_id: int, year: int = 2025) -> Dict[str, int]:
+    def __init__(self):
+        super().__init__()
+        self._ensure_leave_columns()
+
+    def _ensure_leave_columns(self):
+        """
+        Yeni izin türleri için veritabanı şemasını otomatik günceller
+        """
         try:
             with self.db.get_cursor() as cursor:
-                cursor.execute(
-                    "SELECT annual_leave, sick_leave, personal_leave FROM leave_balance WHERE user_id = %s AND year = %s",
-                    (user_id, year)
-                )
-                result = cursor.fetchone()
-                if result:
-                    return {"annual": result['annual_leave'], "sick": result['sick_leave'], "personal": result['personal_leave']}
-                return {"annual": 0, "sick": 0, "personal": 0}
+                # 1. Update leave_requests.leave_type column to support new values
+                try:
+                    # Convert ENUM to VARCHAR to allow any leave type
+                    cursor.execute("ALTER TABLE leave_requests MODIFY COLUMN leave_type VARCHAR(50)")
+                    print("✅ Updated leave_type column to VARCHAR(50)")
+                except Exception as e:
+                    print(f"⚠️ Failed to update leave_type column: {e}")
+
+                # 2. Check/Add new balance columns
+                new_columns = {
+                    'paternity_leave': 'INT DEFAULT 5',
+                    'maternity_leave': 'INT DEFAULT 112',
+                    'marriage_leave': 'INT DEFAULT 3',
+                    'death_leave': 'INT DEFAULT 3'
+                }
+                
+                cursor.execute("SHOW COLUMNS FROM leave_balance")
+                existing_columns = [row['Field'] for row in cursor.fetchall()]
+                
+                for col, definition in new_columns.items():
+                    if col not in existing_columns:
+                        try:
+                            cursor.execute(f"ALTER TABLE leave_balance ADD COLUMN {col} {definition}")
+                            print(f"✅ Added {col} to leave_balance table")
+                        except Exception as e:
+                            print(f"⚠️ Failed to add {col} column: {e}")
+
         except Exception as e:
-            print(f"Get leave balance error: {e}")
-            return {"annual": 0, "sick": 0, "personal": 0}
+            print(f"❌ Leave Request schema check error: {e}")
 
     def get_requests(self, user_id: int, status: Optional[str] = None) -> List[Dict[str, Any]]:
         try:
@@ -429,8 +489,8 @@ class LeaveRepository(BaseRepository):
             with self.db.get_cursor() as cursor:
                 cursor.execute(
                     """
-                    INSERT INTO leave_requests (user_id, leave_type, start_date, end_date, total_days, reason)
-                    VALUES (%s, %s, %s, %s, %s, %s)
+                    INSERT INTO leave_requests (user_id, leave_type, start_date, end_date, total_days, reason, status)
+                    VALUES (%s, %s, %s, %s, %s, %s, 'pending')
                     """,
                     (user_id, data['leaveType'], data['startDate'], data['endDate'], data['totalDays'], data['reason'])
                 )
@@ -442,6 +502,21 @@ class LeaveRepository(BaseRepository):
     def approve_request(self, request_id: int, admin_id: int, approved: bool, reason: Optional[str] = None) -> bool:
         try:
             with self.db.get_cursor() as cursor:
+                # 1. Get request details first
+                cursor.execute(
+                    "SELECT user_id, leave_type, total_days, status FROM leave_requests WHERE id = %s",
+                    (request_id,)
+                )
+                request = cursor.fetchone()
+                if not request:
+                    return False
+
+                current_status = request['status']
+                if current_status != 'pending':
+                    # Already processed
+                    return False
+
+                # 2. Update status
                 status = 'approved' if approved else 'rejected'
                 cursor.execute(
                     """
@@ -450,10 +525,163 @@ class LeaveRepository(BaseRepository):
                     """,
                     (status, admin_id, reason, request_id)
                 )
+                
+                # 3. If approved, deduct from balance
+                if approved:
+                    self._deduct_balance(cursor, request['user_id'], request['leave_type'], request['total_days'])
+                
                 return cursor.rowcount > 0
         except Exception as e:
             print(f"Approve leave request error: {e}")
             return False
+
+    def _deduct_balance(self, cursor, user_id: int, leave_type: str, days: float):
+        """
+        Helper to deduct days from specific leave balance
+        """
+        # Map frontend leave types to database columns
+        column_map = {
+            'annual': 'annual_leave',
+            'sick': 'sick_leave',
+            'personal': 'personal_leave',
+            'paternity': 'paternity_leave',
+            'maternity': 'maternity_leave',
+            'marriage': 'marriage_leave',
+            'death': 'death_leave'
+        }
+        
+        col_name = column_map.get(leave_type)
+        if col_name:
+            try:
+                # Subtract days. We cast days to int for simplicity, or handle float if db supports it. 
+                # Assuming integer columns for now, rounding up half days or using float columns would be next step.
+                # For now, converting to int (ceil) or just int.
+                days_int = int(days) if days % 1 == 0 else int(days) + 1
+                
+                query = f"UPDATE leave_balance SET {col_name} = {col_name} - %s WHERE user_id = %s"
+                cursor.execute(query, (days_int, user_id))
+                print(f"✅ Deducted {days_int} days from {col_name} for user {user_id}")
+            except Exception as e:
+                print(f"❌ Failed to deduct balance: {e}")
+
+    def get_balance(self, user_id: int, year: int = 2025) -> Dict[str, int]:
+        # First, check if annual leave should be renewed based on seniority
+        self._check_seniority_accrual(user_id)
+        
+        try:
+            with self.db.get_cursor() as cursor:
+                # ... existing query ...
+                try:
+                    cursor.execute(
+                        """
+                        SELECT annual_leave, sick_leave, personal_leave,
+                        paternity_leave, maternity_leave, marriage_leave, death_leave
+                        FROM leave_balance WHERE user_id = %s AND year = %s
+                        """,
+                        (user_id, year)
+                    )
+                except:
+                   # ... fallback ...
+                    cursor.execute(
+                        "SELECT annual_leave, sick_leave, personal_leave FROM leave_balance WHERE user_id = %s AND year = %s",
+                        (user_id, year)
+                    )
+                
+                result = cursor.fetchone()
+                if result:
+                    return {
+                        "annual": result.get('annual_leave', 0),
+                        "sick": result.get('sick_leave', 0),
+                        "personal": result.get('personal_leave', 0),
+                        "paternity": result.get('paternity_leave', 5),
+                        "maternity": result.get('maternity_leave', 112),
+                        "marriage": result.get('marriage_leave', 3),
+                        "death": result.get('death_leave', 3)
+                    }
+                
+                return {
+                    "annual": 0, "sick": 0, "personal": 0,
+                    "paternity": 5, "maternity": 112,
+                    "marriage": 3, "death": 3
+                }
+        except Exception as e:
+            print(f"Get leave balance error: {e}")
+            return {
+                "annual": 0, "sick": 0, "personal": 0,
+                "paternity": 5, "maternity": 112,
+                "marriage": 3, "death": 3
+            }
+
+    def _check_seniority_accrual(self, user_id: int):
+        """
+        Check if user deserves new annual leave based on start_date
+        This is a simplified implementation. ideally this runs as a daily cron job.
+        For now, it runs on balance check and checks if 'last_accrual_year' < current_year
+        """
+        try:
+            with self.db.get_cursor() as cursor:
+                # 1. Get user start_date
+                cursor.execute("SELECT start_date FROM users WHERE id = %s", (user_id,))
+                user = cursor.fetchone()
+                if not user or not user['start_date']:
+                    return
+
+                # Parse start date
+                # Assuming start_date is stored as string 'YYYY-MM-DD' or date object
+                start_date_str = str(user['start_date'])
+                try:
+                    from datetime import datetime
+                    start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+                except:
+                    # Try other formats or skip
+                    return
+
+                now = datetime.now()
+                # Calculate simple tenure in years
+                tenure_years = now.year - start_date.year
+                
+                # Determine entitlement based on Turkish Labor Law
+                # 1-5 years: 14 days
+                # 5-15 years: 20 days
+                # 15+ years: 26 days
+                entitlement = 0
+                if tenure_years >= 1 and tenure_years < 5:
+                    entitlement = 14
+                elif tenure_years >= 5 and tenure_years < 15:
+                    entitlement = 20
+                elif tenure_years >= 15:
+                    entitlement = 26
+                
+                if entitlement > 0:
+                    # Check if balance record exists for this year
+                    try:
+                        cursor.execute(
+                            "SELECT id FROM leave_balance WHERE user_id = %s AND year = %s",
+                            (user_id, now.year)
+                        )
+                        balance_record = cursor.fetchone()
+                        
+                        if not balance_record:
+                            # Create new record with entitlement
+                            cursor.execute(
+                                """
+                                INSERT INTO leave_balance (user_id, year, annual_leave, sick_leave, personal_leave, paternity_leave, maternity_leave, marriage_leave, death_leave)
+                                VALUES (%s, %s, %s, 5, 3, 5, 112, 3, 3)
+                                """,
+                                (user_id, now.year, entitlement)
+                            )
+                            print(f"✅ Created leave balance for user {user_id} year {now.year} with {entitlement} annual days")
+                        else:
+                            # Record exists. 
+                            # Optional: If we want to support 'adding' entitlement on anniversary while record exists...
+                            # That requires tracking 'last_accrual_date'. For now, we only handle year initialization.
+                            pass
+
+                    except Exception as e:
+                        print(f"Failed to update seniority balance: {e}")
+
+        except Exception as e:
+            print(f"Seniority check error: {e}")
 
 class AssetRepository(BaseRepository):
     def get_categories(self) -> List[Dict]:
@@ -738,7 +966,8 @@ class DashboardRepository(BaseRepository):
                 "email": user_info['email'],
                 "avatar": user_info['avatar'],
                 "userRole": user_info.get('user_role', 'employee'),
-                "startDate": user_info.get('start_date').strftime('%Y-%m-%d') if user_info.get('start_date') else None
+                "startDate": user_info.get('start_date').strftime('%Y-%m-%d') if user_info.get('start_date') else None,
+                "tcNo": user_info.get('tc_no')
             },
             "leaveBalance": self.leave_repo.get_balance(user_id),
             "pendingTasks": self.task_repo.get_by_user(user_id, 'pending'),
@@ -758,7 +987,8 @@ class DashboardRepository(BaseRepository):
                 "email": user_info['email'],
                 "avatar": user_info['avatar'],
                 "userRole": user_info.get('user_role', 'employee'),
-                "startDate": user_info.get('start_date').strftime('%Y-%m-%d') if user_info.get('start_date') else None
+                "startDate": user_info.get('start_date').strftime('%Y-%m-%d') if user_info.get('start_date') else None,
+                "tcNo": user_info.get('tc_no')
             },
             "leaveBalance": self.leave_repo.get_balance(user_id),
             "workSchedule": self.work_schedule_repo.get_schedule(user_id, 7),
