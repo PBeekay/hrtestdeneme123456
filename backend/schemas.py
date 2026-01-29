@@ -44,6 +44,36 @@ class UserInfo(EmployeeUser):
     pass
 
 
+# ==================== USER MANAGEMENT MODELS ====================
+
+class CreateAdminRequest(BaseModel):
+    username: str
+    email: str
+    password: str
+    full_name: str
+    department: Optional[str] = "İK"
+
+class CreateEmployeeRequest(BaseModel):
+    name: str
+    email: str
+    department: str
+    role: str
+    startDate: str
+    phone: Optional[str] = None
+    location: Optional[str] = None
+    manager: Optional[str] = None
+    status: Optional[str] = "active"
+    password: Optional[str] = None
+    user_role: Optional[str] = "employee"
+    permissions: Optional[List[str]] = None
+
+class UpdateUserRoleRequest(BaseModel):
+    user_role: str
+
+class UpdateUserPasswordRequest(BaseModel):
+    new_password: str
+
+
 # ==================== DASHBOARD MODELS ====================
 
 class LeaveBalance(BaseModel):
@@ -143,3 +173,14 @@ class AssetAssignmentUpdate(BaseModel):
     document_filename: Optional[str] = None
     notes: Optional[str] = None
     status: Optional[str] = None
+
+
+class MonitorTarget(BaseModel):
+    target_id: int
+    name: str
+    url: str
+    status: str
+    latency_ms: float
+    last_check: str
+    history_preview: List[float]
+

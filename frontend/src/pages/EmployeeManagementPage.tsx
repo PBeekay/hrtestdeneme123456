@@ -1,6 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import api from '../services/api';
 import { EmployeeProfile, EmployeeStats, EmployeeDocument } from '../types';
+import {
+  ArrowLeft,
+  Plus,
+  FileText,
+  Edit2,
+  Trash2,
+  User,
+  Calendar,
+  CheckCircle,
+  AlertCircle,
+  UserPlus
+} from 'lucide-react';
+import SearchableSelect from '../components/ui/SearchableSelect';
 
 type ToastFn = (message: string, type?: 'success' | 'error' | 'info' | 'warning') => void;
 
@@ -12,83 +25,6 @@ interface EmployeeManagementPageProps {
   addToast: ToastFn;
   onAddEmployee: () => void;
 }
-
-const fallbackEmployees: EmployeeProfile[] = [
-  {
-    id: 1,
-    name: 'Selin Yılmaz',
-    role: 'Kıdemli İnsan Kaynakları Uzmanı',
-    department: 'İK',
-    email: 'selin.yilmaz@company.com',
-    phone: '+90 542 000 12 34',
-    startDate: '2018-04-16',
-    status: 'active',
-    manager: 'Ahmet Demir',
-    location: 'İstanbul',
-    documents: [
-      {
-        id: 1,
-        title: 'İş Sözleşmesi',
-        type: 'contract',
-        uploadedAt: '2022-01-05',
-        status: 'approved',
-        uploadedBy: 'HR',
-      },
-      {
-        id: 2,
-        title: 'Performans Raporu 2024',
-        type: 'performance',
-        uploadedAt: '2024-11-01',
-        status: 'pending',
-        uploadedBy: 'HR',
-      },
-    ],
-  },
-  {
-    id: 2,
-    name: 'Burak Aksoy',
-    role: 'Kıdemli Yazılım Geliştirici',
-    department: 'Teknoloji',
-    email: 'burak.aksoy@company.com',
-    phone: '+90 532 444 22 11',
-    startDate: '2019-10-03',
-    status: 'on_leave',
-    manager: 'Elif Korkmaz',
-    location: 'İzmir',
-    documents: [
-      {
-        id: 3,
-        title: 'Yıllık Performans',
-        type: 'performance',
-        uploadedAt: '2024-06-15',
-        status: 'approved',
-        uploadedBy: 'Manager',
-      },
-    ],
-  },
-  {
-    id: 3,
-    name: 'Eda Öztürk',
-    role: 'Ürün Yöneticisi',
-    department: 'Ürün',
-    email: 'eda.ozturk@company.com',
-    phone: '+90 533 987 65 43',
-    startDate: '2021-02-11',
-    status: 'active',
-    manager: 'Ahmet Demir',
-    location: 'Ankara',
-    documents: [
-      {
-        id: 4,
-        title: 'İş Sözleşmesi',
-        type: 'contract',
-        uploadedAt: '2021-02-13',
-        status: 'approved',
-        uploadedBy: 'HR',
-      },
-    ],
-  },
-];
 
 const statusBadge = (status: EmployeeProfile['status']) => {
   switch (status) {
@@ -116,17 +52,30 @@ const documentBadge = (status: EmployeeDocument['status']) => {
   }
 };
 
+const DEFAULT_ROLES = [
+  'Yazılım Mühendisi', 'Kıdemli Yazılım Mühendisi', 'Takım Lideri',
+  'Ürün Yöneticisi', 'Proje Yöneticisi', 'İş Analisti',
+  'İK Uzmanı', 'İK Yöneticisi', 'İşe Alım Uzmanı',
+  'Satış Temsilcisi', 'Pazarlama Uzmanı', 'Finans Uzmanı',
+  'Grafik Tasarımcı', 'UI/UX Tasarımcı', 'QA Mühendisi'
+];
+
+const DEFAULT_DEPARTMENTS = [
+  'Bilgi Teknolojileri (IT)', 'İnsan Kaynakları', 'Finans & Muhasebe',
+  'Satış & Pazarlama', 'Operasyon', 'Yönetim', 'Hukuk'
+];
+
 interface SummaryCardProps {
   label: string;
   value: number;
-  icon: string;
+  icon: React.ReactNode;
   accent: string;
 }
 
 const SummaryCard: React.FC<SummaryCardProps> = ({ label, value, icon, accent }) => (
   <div className="bg-gradient-to-br from-white/90 to-white/40 dark:from-neutral-800/70 dark:to-neutral-900/50 rounded-md p-4 border border-white/40 dark:border-neutral-800 shadow-lg">
     <div className="flex items-center justify-between mb-4">
-      <div className="text-2xl">{icon}</div>
+      <div className="text-primary-600 dark:text-primary-400">{icon}</div>
       <span className="text-xs font-semibold text-neutral-500 uppercase">{label}</span>
     </div>
     <p className="text-4xl font-black text-neutral-900 dark:text-white">{value}</p>
@@ -151,7 +100,7 @@ const EmployeeManagementPage: React.FC<EmployeeManagementPageProps> = ({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState<number>(employees?.[0]?.id ?? fallbackEmployees[0].id);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<number>(employees?.[0]?.id || 0);
 
   const [documentTitle, setDocumentTitle] = useState('');
   const [documentType, setDocumentType] = useState<EmployeeDocument['type']>('other');
@@ -249,7 +198,7 @@ const EmployeeManagementPage: React.FC<EmployeeManagementPageProps> = ({
   }, [employees, fetchEmployeeData]);
 
   const employeeList = useMemo(
-    () => (employeeData && employeeData.length > 0 ? employeeData : fallbackEmployees),
+    () => (employeeData && employeeData.length > 0 ? employeeData : []),
     [employeeData]
   );
 
@@ -537,7 +486,7 @@ const EmployeeManagementPage: React.FC<EmployeeManagementPageProps> = ({
             onClick={onBack}
             className="inline-flex items-center space-x-2 px-4 py-2 rounded-md border border-neutral-200 dark:border-neutral-700 bg-white/70 dark:bg-neutral-800/70 shadow-sm text-sm font-semibold text-neutral-700 dark:text-neutral-200 hover:-translate-y-0.5 transition-all"
           >
-            <span>←</span>
+            <ArrowLeft className="w-4 h-4" />
             <span>Kontrol Paneline Dön</span>
           </button>
           <div className="flex flex-col md:items-end gap-2 text-right">
@@ -547,18 +496,36 @@ const EmployeeManagementPage: React.FC<EmployeeManagementPageProps> = ({
             </div>
             <div className="flex flex-wrap gap-2 justify-end">
               <button
+                onClick={() => {
+                  const csvContent = "data:text/csv;charset=utf-8,"
+                    + "Ad Soyad,Departman,Rol,E-posta,Telefon,Baslangic,Durum\n"
+                    + filteredEmployees.map(e => `${e.name},${e.department},${e.role},${e.email},${e.phone || ''},${e.startDate},${e.status}`).join("\n");
+                  const encodedUri = encodeURI(csvContent);
+                  const link = document.createElement("a");
+                  link.setAttribute("href", encodedUri);
+                  link.setAttribute("download", "calisanlar.csv");
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  addToast('Çalışan listesi indirildi', 'success');
+                }}
+                className="inline-flex items-center justify-center px-4 py-2 rounded-md border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm font-semibold text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700 shadow-sm"
+              >
+                📥 Excel
+              </button>
+              <button
                 onClick={handleManualRefresh}
                 disabled={isRefreshing}
                 className="inline-flex items-center justify-center px-4 py-2 rounded-md border border-primary-200 dark:border-primary-800 text-sm font-semibold text-primary-700 dark:text-primary-200 bg-primary-50 dark:bg-primary-900/30 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {isRefreshing ? 'Yenileniyor...' : 'Verileri Yenile'}
+                {isRefreshing ? 'Yenileniyor...' : 'Yenile'}
               </button>
               {isAdmin && (
                 <button
                   onClick={onAddEmployee}
-                  className="inline-flex items-center space-x-1 px-4 py-2 rounded-md bg-green-500 text-white text-sm font-semibold hover:bg-green-600 transition-colors shadow-sm"
+                  className="inline-flex items-center space-x-1 px-4 py-2 rounded-md bg-green-600 text-white text-sm font-semibold hover:bg-green-700 transition-colors shadow-sm"
                 >
-                  <span>➕</span>
+                  <Plus className="w-4 h-4 mr-1" />
                   <span>Çalışan Ekle</span>
                 </button>
               )}
@@ -572,321 +539,390 @@ const EmployeeManagementPage: React.FC<EmployeeManagementPageProps> = ({
           </div>
         )}
 
+        {/* ... Summary Cards ... */}
         <div className="bg-stone-50 dark:bg-neutral-900 rounded-3xl p-6 border border-stone-200/50 dark:border-neutral-800 shadow-xl space-y-6">
+          {/* ... kept same ... */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <p className="text-sm uppercase tracking-wider text-primary-500 font-semibold">Employee Hub</p>
               <h1 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white">Çalışan Yönetim Merkezi</h1>
               <p className="text-neutral-500 dark:text-neutral-400 mt-2 max-w-2xl">
-                Tüm çalışanların özlük dosyalarını, belgelerini ve güncel durumlarını yönetin. Belgeler yükleyin, not ekleyin ve
-                aksiyonları takip edin.
+                Tüm çalışanların özlük dosyalarını, belgelerini ve güncel durumlarını yönetin.
               </p>
             </div>
             <div className="bg-primary-50 dark:bg-primary-900/20 rounded-md px-4 py-3 text-sm text-primary-700 dark:text-primary-200">
               {userRole === 'admin'
-                ? 'Yönetici hesabı ile gelen talepleri onaylayabilir, belgeleri düzenleyebilirsiniz.'
-                : 'Okuma modundasınız. Belgeler ve bilgiler yalnızca görüntülenebilir.'}
+                ? 'Tam yetkili yönetici görünümü.'
+                : 'Kısıtlı görüntüleme modu.'}
             </div>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <SummaryCard label="Toplam Çalışan" value={effectiveStats.totalEmployees} accent="from-blue-500 to-indigo-600" icon="" />
-            <SummaryCard label="İzinde" value={effectiveStats.onLeave} accent="from-amber-500 to-orange-500" icon="" />
+            <SummaryCard label="Toplam Çalışan" value={effectiveStats.totalEmployees} accent="from-blue-500 to-indigo-600" icon={<User className="w-6 h-6" />} />
+            <SummaryCard label="İzinde" value={effectiveStats.onLeave} accent="from-amber-500 to-orange-500" icon={<Calendar className="w-6 h-6" />} />
             <SummaryCard
               label="Bekleyen Belgeler"
               value={effectiveStats.pendingDocuments}
               accent="from-rose-500 to-pink-500"
-              icon="📄"
+              icon={<FileText className="w-6 h-6" />}
             />
-            <SummaryCard label="Onboarding" value={effectiveStats.onboarding} accent="from-emerald-500 to-green-600" icon="" />
+            <SummaryCard label="Onboarding" value={effectiveStats.onboarding} accent="from-emerald-500 to-green-600" icon={<UserPlus className="w-6 h-6" />} />
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-stone-50 dark:bg-neutral-900 rounded-3xl p-6 border border-stone-200/50 dark:border-neutral-800 shadow-lg space-y-4">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-              <div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-stone-50 dark:bg-neutral-900 rounded-3xl p-6 border border-stone-200/50 dark:border-neutral-800 shadow-lg space-y-4">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <h2 className="text-xl font-semibold text-neutral-900 dark:text-white">Çalışan Listesi</h2>
-                <p className="text-sm text-neutral-500 dark:text-neutral-400">Filtreleyin, arayın ve birini seçerek detayları inceleyin.</p>
+                {/* Quick Tabs */}
+                <div className="flex p-1 bg-neutral-200 dark:bg-neutral-800 rounded-lg self-start">
+                  {[
+                    { id: 'all', label: 'Tümü' },
+                    { id: 'active', label: 'Aktif' },
+                    { id: 'on_leave', label: 'İzinde' }
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setAdvancedFilters(prev => ({ ...prev, status: tab.id }))}
+                      className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${advancedFilters.status === tab.id
+                        ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
+                        : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700'
+                        }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center space-x-2">
-                  <select
-                    value={selectedDepartment}
-                    onChange={(e) => setSelectedDepartment(e.target.value)}
-                    className="rounded-md border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-3 py-2 text-sm"
-                  >
-                    {departmentOptions.map((dept) => (
-                      <option key={dept} value={dept}>
-                        {dept === 'all' ? 'Tüm Departmanlar' : dept}
-                      </option>
-                    ))}
-                  </select>
+
+              <div className="flex flex-col md:flex-row gap-3">
+                <div className="flex-1 relative">
                   <input
                     type="text"
-                    placeholder="Çalışan ara..."
+                    placeholder="İsim, e-posta veya rol ara..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="rounded-md border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-3 py-2 text-sm flex-1"
+                    className="w-full pl-9 pr-4 py-2 rounded-md border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm focus:ring-2 focus:ring-primary-500"
                   />
+                  <div className="absolute left-3 top-2.5 text-neutral-400">🔍</div>
                 </div>
-                <div className="flex items-center space-x-2 text-xs">
-                  <select
-                    value={advancedFilters.status}
-                    onChange={(e) => setAdvancedFilters({ ...advancedFilters, status: e.target.value })}
-                    className="rounded-md border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-2 py-1 text-xs"
-                  >
-                    <option value="all">Tüm Durumlar</option>
-                    <option value="active">Aktif</option>
-                    <option value="on_leave">İzinde</option>
-                    <option value="terminated">Ayrıldı</option>
-                  </select>
-                  <input
-                    type="text"
-                    placeholder="Rol ara..."
-                    value={advancedFilters.role}
-                    onChange={(e) => setAdvancedFilters({ ...advancedFilters, role: e.target.value })}
-                    className="rounded-md border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-2 py-1 text-xs flex-1"
-                  />
-                </div>
+                <select
+                  value={selectedDepartment}
+                  onChange={(e) => setSelectedDepartment(e.target.value)}
+                  className="md:w-48 rounded-md border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-sm"
+                >
+                  {departmentOptions.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept === 'all' ? 'Tüm Departmanlar' : dept}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
-            <div className="max-h-[420px] overflow-y-auto custom-scrollbar pr-1 space-y-2">
+            <div className="max-h-[500px] overflow-y-auto custom-scrollbar pr-1 space-y-2">
               {isLoading ? (
-                <div className="w-full flex items-center justify-center rounded-md border border-dashed border-neutral-300 dark:border-neutral-700 px-4 py-6 text-sm text-neutral-500 dark:text-neutral-400">
-                  Çalışan verileri yükleniyor...
+                <div className="w-full flex items-center justify-center py-12 text-sm text-neutral-500 dark:text-neutral-400">
+                  Veriler yükleniyor...
                 </div>
               ) : filteredEmployees.length === 0 ? (
-                <div className="w-full flex items-center justify-center rounded-md border border-dashed border-neutral-300 dark:border-neutral-700 px-4 py-6 text-sm text-neutral-500 dark:text-neutral-400">
+                <div className="w-full flex items-center justify-center py-12 text-sm text-neutral-500 dark:text-neutral-400 border border-dashed border-neutral-300 dark:border-neutral-700 rounded-lg">
                   Sonuç bulunamadı.
                 </div>
               ) : (
                 filteredEmployees.map((employee) => (
                   <div
                     key={employee.id}
-                    className={`w-full flex items-center justify-between rounded-md border px-4 py-3 transition-all group ${selectedEmployeeId === employee.id
-                      ? 'border-primary-400 bg-primary-50 dark:bg-primary-900/20'
-                      : 'border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-800/50 hover:border-primary-200'
+                    className={`w-full flex items-center justify-between rounded-xl border p-3 transition-all group cursor-pointer ${selectedEmployeeId === employee.id
+                      ? 'border-primary-400 bg-white dark:bg-neutral-800 ring-1 ring-primary-400'
+                      : 'border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-800/40 hover:border-primary-300 dark:hover:border-primary-700'
                       }`}
+                    onClick={() => setSelectedEmployeeId(employee.id)}
                   >
-                    <button
-                      onClick={() => setSelectedEmployeeId(employee.id)}
-                      className="flex-1 flex items-center justify-between text-left"
-                    >
-                      <div>
-                        <p className="text-sm font-semibold text-neutral-900 dark:text-white">{employee.name}</p>
-                        <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                          {employee.role} • {employee.department}
+                    <div className="flex items-center space-x-3 overflow-hidden">
+                      <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm bg-gradient-to-br ${employee.status === 'active' ? 'from-blue-500 to-indigo-600' :
+                        employee.status === 'on_leave' ? 'from-amber-400 to-orange-500' : 'from-neutral-500 to-neutral-600'
+                        }`}>
+                        {employee.name.charAt(0)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className={`text-sm font-semibold truncate ${selectedEmployeeId === employee.id ? 'text-primary-700 dark:text-primary-400' : 'text-neutral-900 dark:text-white'}`}>
+                          {employee.name}
+                        </p>
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">
+                          {employee.role}
                         </p>
                       </div>
-                      <span className={`text-xs font-semibold px-2 py-1 rounded-full ${statusBadge(employee.status)}`}>
-                        {employee.status === 'active'
-                          ? 'Aktif'
-                          : employee.status === 'on_leave'
-                            ? 'İzinde'
-                            : 'Ayrıldı'}
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <span className={`hidden md:inline-flex text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${statusBadge(employee.status)}`}>
+                        {employee.status === 'active' ? 'Aktif' : employee.status === 'on_leave' ? 'İzinli' : 'Pasif'}
                       </span>
-                    </button>
-                    {isAdmin && (
-                      <div className="flex gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            startEditEmployee(employee);
-                          }}
-                          className="p-1.5 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400"
-                          title="Düzenle"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteEmployee(employee.id, true);
-                          }}
-                          className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400"
-                          title="Devre Dışı Bırak"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </div>
-                    )}
+                      {isAdmin && (
+                        <div className="flex gap-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              startEditEmployee(employee);
+                            }}
+                            className="p-1.5 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-500 hover:text-blue-600 dark:text-neutral-400 transition-colors"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))
               )}
             </div>
           </div>
 
-          <div className="bg-stone-50 dark:bg-neutral-900 rounded-3xl p-6 border border-stone-200/50 dark:border-neutral-800 shadow-lg space-y-5">
-            <h2 className="text-xl font-semibold text-neutral-900 dark:text-white">Detay Paneli</h2>
-            <div className="space-y-2">
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 text-white flex items-center justify-center text-lg font-bold">
-                  {selectedEmployee.name
-                    .split(' ')
-                    .map((part) => part[0])
-                    .slice(0, 2)
-                    .join('')}
-                </div>
-                <div>
-                  <p className="text-lg font-bold text-neutral-900 dark:text-white">{selectedEmployee.name}</p>
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400">{selectedEmployee.role}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-xs text-neutral-500 dark:text-neutral-400">
-                <p>Departman: <span className="font-semibold text-neutral-700 dark:text-neutral-200">{selectedEmployee.department}</span></p>
-                <p>Durum: <span className="font-semibold text-neutral-700 dark:text-neutral-200">{selectedEmployee.status === 'active' ? 'Aktif' : selectedEmployee.status === 'on_leave' ? 'İzinde' : 'Ayrıldı'}</span></p>
-                <p>Başlangıç: <span className="font-semibold text-neutral-700 dark:text-neutral-200">{selectedEmployee.startDate}</span></p>
-                <p>Lokasyon: <span className="font-semibold text-neutral-700 dark:text-neutral-200">{selectedEmployee.location}</span></p>
-              </div>
-              <div className="text-xs">
-                <p className="text-neutral-500 dark:text-neutral-400">E-posta</p>
-                <p className="font-semibold text-neutral-800 dark:text-neutral-100 break-all">{selectedEmployee.email}</p>
-              </div>
-              {selectedEmployee.phone && (
-                <div className="text-xs">
-                  <p className="text-neutral-500 dark:text-neutral-400">Telefon</p>
-                  <p className="font-semibold text-neutral-800 dark:text-neutral-100 break-all">{selectedEmployee.phone}</p>
-                </div>
-              )}
-            </div>
+          <div className="bg-stone-50 dark:bg-neutral-900 rounded-3xl p-6 border border-stone-200/50 dark:border-neutral-800 shadow-lg space-y-6 sticky top-6">
+            <h2 className="text-xl font-semibold text-neutral-900 dark:text-white border-b border-neutral-200 dark:border-neutral-800 pb-4">
+              Detay Paneli
+            </h2>
+            {selectedEmployee ? (
+              <>
+                <div className="space-y-6">
+                  {/* Header/Profile */}
+                  <div className="flex flex-col items-center text-center p-4 bg-white dark:bg-neutral-800/50 rounded-2xl border border-neutral-100 dark:border-neutral-700/50 shadow-sm">
+                    <div className="w-24 h-24 mb-3 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 text-white flex items-center justify-center text-3xl font-bold shadow-md ring-4 ring-white dark:ring-neutral-800">
+                      {selectedEmployee.name
+                        .split(' ')
+                        .map((part) => part[0])
+                        .slice(0, 2)
+                        .join('')}
+                    </div>
+                    <h3 className="text-xl font-bold text-neutral-900 dark:text-white">{selectedEmployee.name}</h3>
+                    <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{selectedEmployee.role}</p>
+                    <span className={`mt-2 px-3 py-1 text-xs font-bold rounded-full ${statusBadge(selectedEmployee.status)}`}>
+                      {selectedEmployee.status === 'active' ? 'AKTİF ÇALIŞAN' : selectedEmployee.status === 'on_leave' ? 'İZİNDE' : 'AYRILDI'}
+                    </span>
+                  </div>
 
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">Belge Durumu</h3>
-              <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
-                {selectedEmployee.documents?.map((doc) => (
-                  editingDocumentId === doc.id ? (
-                    <div
-                      key={doc.id}
-                      className="rounded-md border border-purple-300 dark:border-purple-700 px-3 py-2 space-y-2 bg-purple-50 dark:bg-purple-900/20"
-                    >
-                      <input
-                        type="text"
-                        value={editingDocumentTitle}
-                        onChange={(e) => setEditingDocumentTitle(e.target.value)}
-                        className="w-full rounded-md border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-2 py-1 text-sm"
-                        placeholder="Belge başlığı"
-                      />
-                      <select
-                        value={editingDocumentType}
-                        onChange={(e) => setEditingDocumentType(e.target.value as EmployeeDocument['type'])}
-                        className="w-full rounded-md border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-2 py-1 text-sm"
-                      >
-                        <option value="contract">Sözleşme</option>
-                        <option value="performance">Performans</option>
-                        <option value="discipline">Disiplin</option>
-                        <option value="other">Diğer</option>
-                      </select>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={handleUpdateDocument}
-                          disabled={savingDocument}
-                          className="flex-1 py-1.5 rounded-md bg-purple-600 text-white text-xs font-semibold hover:bg-purple-700 transition-colors disabled:opacity-60"
-                        >
-                          {savingDocument ? 'Kaydediliyor...' : 'Kaydet'}
-                        </button>
-                        <button
-                          onClick={cancelEditDocument}
-                          disabled={savingDocument}
-                          className="flex-1 py-1.5 rounded-md bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 text-xs font-semibold hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors disabled:opacity-60"
-                        >
-                          İptal
-                        </button>
+                  {/* Info Grid */}
+                  <div className="space-y-6">
+                    {/* Job Details */}
+                    <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-100 dark:border-neutral-700 p-4 space-y-4">
+                      <h4 className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">Kurumsal Bilgiler</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs text-neutral-500 dark:text-neutral-400">Departman</p>
+                          <p className="text-sm font-semibold text-neutral-900 dark:text-white">{selectedEmployee.department}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-neutral-500 dark:text-neutral-400">Yönetici</p>
+                          <p className="text-sm font-semibold text-neutral-900 dark:text-white">{selectedEmployee.manager || 'Tayin Edilmedi'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-neutral-500 dark:text-neutral-400">Başlangıç Tarihi</p>
+                          <p className="text-sm font-semibold text-neutral-900 dark:text-white">{selectedEmployee.startDate}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-neutral-500 dark:text-neutral-400">Çalışma Şekli</p>
+                          <p className="text-sm font-semibold text-neutral-900 dark:text-white">Tam Zamanlı (Ofis)</p>
+                        </div>
                       </div>
                     </div>
-                  ) : (
-                    <div
-                      key={doc.id}
-                      className="rounded-md border border-neutral-200 dark:border-neutral-800 px-3 py-2 flex items-center justify-between text-sm group"
-                    >
-                      <div className="flex-1">
-                        <p className="font-semibold text-neutral-800 dark:text-neutral-100">{doc.title}</p>
-                        <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                          {doc.uploadedAt} • {doc.uploadedBy}
-                        </p>
+
+                    {/* Personal Info (Consolidated) */}
+                    <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-100 dark:border-neutral-700 p-4 space-y-3">
+                      <h4 className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">Kişisel Bilgiler</h4>
+
+                      <div className="flex items-center space-x-3">
+                        <div className="p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-xs text-neutral-500 dark:text-neutral-400">E-posta</p>
+                          <p className="text-sm font-medium text-neutral-900 dark:text-white break-all">{selectedEmployee.email}</p>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${documentBadge(doc.status)}`}>
-                          {doc.status === 'approved'
-                            ? 'Onaylandı'
-                            : doc.status === 'pending'
-                              ? 'Beklemede'
-                              : 'Reddedildi'}
-                        </span>
-                        {isAdmin && (
-                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {doc.status === 'pending' && (
-                              <>
-                                <button
-                                  onClick={() => handleApproveDocument(doc.id, true)}
-                                  disabled={approvingDocumentId === doc.id}
-                                  className="p-1 rounded hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400 disabled:opacity-50"
-                                  title="Onayla"
-                                >
-                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                  </svg>
-                                </button>
-                                <button
-                                  onClick={() => openApprovalDialog(doc)}
-                                  disabled={approvingDocumentId === doc.id}
-                                  className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 disabled:opacity-50"
-                                  title="Reddet"
-                                >
-                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                  </svg>
-                                </button>
-                              </>
-                            )}
-                            <button
-                              onClick={() => startEditDocument(doc)}
-                              className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-400"
-                              title="Düzenle"
-                            >
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                              </svg>
-                            </button>
-                            <button
-                              onClick={() => handleDeleteDocument(doc.id)}
-                              disabled={deletingDocumentId === doc.id}
-                              className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 disabled:opacity-50"
-                              title="Sil"
-                            >
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
-                            <input
-                              type="checkbox"
-                              checked={selectedDocuments.includes(doc.id)}
-                              onChange={(e) => {
-                                e.stopPropagation();
-                                if (e.target.checked) {
-                                  setSelectedDocuments([...selectedDocuments, doc.id]);
-                                } else {
-                                  setSelectedDocuments(selectedDocuments.filter(id => id !== doc.id));
-                                }
-                              }}
-                              className="ml-1 w-3 h-3 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
-                              title="Toplu işlem için seç"
-                            />
+
+                      {selectedEmployee.phone && (
+                        <div className="flex items-center space-x-3">
+                          <div className="p-2 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-lg">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
                           </div>
-                        )}
+                          <div className="flex-1">
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400">Telefon</p>
+                            <p className="text-sm font-medium text-neutral-900 dark:text-white">{selectedEmployee.phone}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex items-center space-x-3">
+                        <div className="p-2 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded-lg">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-xs text-neutral-500 dark:text-neutral-400">Lokasyon</p>
+                          <p className="text-sm font-medium text-neutral-900 dark:text-white">{selectedEmployee.location || 'Merkez Ofis'}</p>
+                        </div>
+                      </div>
+
+                      {/* Birth date kept as user said 'mail phone etc' but wanted Personal Info */}
+                      <div className="flex items-center space-x-3">
+                        <div className="p-2 bg-pink-50 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400 rounded-lg">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-xs text-neutral-500 dark:text-neutral-400">Doğum Tarihi</p>
+                          <p className="text-sm font-medium text-neutral-900 dark:text-white">12.05.1990</p>
+                        </div>
                       </div>
                     </div>
-                  )
-                )) || (
-                    <p className="text-xs text-neutral-500 dark:text-neutral-400">Belge bulunamadı</p>
-                  )}
+                  </div>
+                </div>
+
+                <div className="space-y-3 pt-4 border-t border-neutral-200 dark:border-neutral-800">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-neutral-900 dark:text-white uppercase tracking-wide">Belgeler</h3>
+                    <span className="bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 py-0.5 px-2 rounded-full text-xs font-bold">
+                      {selectedEmployee.documents?.length || 0}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar pr-1">
+                    {selectedEmployee.documents?.map((doc) => (
+                      editingDocumentId === doc.id ? (
+                        <div
+                          key={doc.id}
+                          className="rounded-lg border border-purple-300 dark:border-purple-700 p-3 space-y-2 bg-purple-50 dark:bg-purple-900/20"
+                        >
+                          <input
+                            type="text"
+                            value={editingDocumentTitle}
+                            onChange={(e) => setEditingDocumentTitle(e.target.value)}
+                            className="w-full rounded-md border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-2 text-sm"
+                            placeholder="Belge başlığı"
+                          />
+                          <select
+                            value={editingDocumentType}
+                            onChange={(e) => setEditingDocumentType(e.target.value as EmployeeDocument['type'])}
+                            className="w-full rounded-md border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-2 text-sm"
+                          >
+                            <option value="contract">Sözleşme</option>
+                            <option value="performance">Performans</option>
+                            <option value="discipline">Disiplin</option>
+                            <option value="other">Diğer</option>
+                          </select>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={handleUpdateDocument}
+                              disabled={savingDocument}
+                              className="flex-1 py-2 rounded-md bg-purple-600 text-white text-xs font-semibold hover:bg-purple-700 transition-colors shadow-sm"
+                            >
+                              {savingDocument ? '...' : 'Kaydet'}
+                            </button>
+                            <button
+                              onClick={cancelEditDocument}
+                              disabled={savingDocument}
+                              className="flex-1 py-2 rounded-md bg-white border border-neutral-200 text-neutral-600 text-xs font-semibold hover:bg-neutral-50 transition-colors"
+                            >
+                              İptal
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div
+                          key={doc.id}
+                          className="rounded-xl border border-neutral-100 dark:border-neutral-700 p-3 flex items-center justify-between text-sm group bg-white dark:bg-neutral-800 shadow-sm hover:shadow-md transition-all"
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2">
+                              <div className="p-1.5 bg-neutral-100 dark:bg-neutral-700 rounded-lg text-neutral-500">
+                                <FileText className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <p className="font-semibold text-neutral-800 dark:text-neutral-100">{doc.title}</p>
+                                <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                                  {doc.uploadedAt} • {doc.uploadedBy}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${documentBadge(doc.status)}`}>
+                              {doc.status === 'approved'
+                                ? 'Onaylandı'
+                                : doc.status === 'pending'
+                                  ? 'Beklemede'
+                                  : 'Reddedildi'}
+                            </span>
+                            {isAdmin && (
+                              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                {doc.status === 'pending' && (
+                                  <>
+                                    <button
+                                      onClick={() => handleApproveDocument(doc.id, true)}
+                                      disabled={approvingDocumentId === doc.id}
+                                      className="p-1 rounded hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400 disabled:opacity-50"
+                                      title="Onayla"
+                                    >
+                                      <CheckCircle className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => openApprovalDialog(doc)}
+                                      disabled={approvingDocumentId === doc.id}
+                                      className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 disabled:opacity-50"
+                                      title="Reddet"
+                                    >
+                                      <AlertCircle className="w-4 h-4" />
+                                    </button>
+                                  </>
+                                )}
+                                <button
+                                  onClick={() => startEditDocument(doc)}
+                                  className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-400"
+                                  title="Düzenle"
+                                >
+                                  <Edit2 className="w-3 h-3" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteDocument(doc.id)}
+                                  disabled={deletingDocumentId === doc.id}
+                                  className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 disabled:opacity-50"
+                                  title="Sil"
+                                >
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                                <input
+                                  type="checkbox"
+                                  checked={selectedDocuments.includes(doc.id)}
+                                  onChange={(e) => {
+                                    e.stopPropagation();
+                                    if (e.target.checked) {
+                                      setSelectedDocuments([...selectedDocuments, doc.id]);
+                                    } else {
+                                      setSelectedDocuments(selectedDocuments.filter(id => id !== doc.id));
+                                    }
+                                  }}
+                                  className="ml-1 w-3 h-3 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                                  title="Toplu işlem için seç"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    )) || (
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400">Belge bulunamadı</p>
+                      )}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-10 text-neutral-500 dark:text-neutral-400">
+                <User className="w-12 h-12 mb-2 opacity-50" />
+                <p>Detayları görüntülemek için bir çalışan seçin.</p>
               </div>
-            </div>
+            )}
 
             {userRole === 'admin' && (
               <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-md p-4 border border-purple-200 dark:border-purple-800">
@@ -951,21 +987,21 @@ const EmployeeManagementPage: React.FC<EmployeeManagementPageProps> = ({
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-1">Departman</label>
-                    <input
-                      type="text"
+                    <SearchableSelect
+                      label="Departman"
                       value={editingEmployee.department || ''}
-                      onChange={(e) => setEditingEmployee({ ...editingEmployee, department: e.target.value })}
-                      className="w-full px-3 py-2 bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded-lg text-neutral-900 dark:text-white"
+                      onChange={(v) => setEditingEmployee({ ...editingEmployee, department: v })}
+                      options={Array.from(new Set([...DEFAULT_DEPARTMENTS, ...(employeeList.map(e => e.department))]))}
+                      placeholder="Departman seçin..."
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-1">Rol</label>
-                    <input
-                      type="text"
+                    <SearchableSelect
+                      label="Rol"
                       value={editingEmployee.role || ''}
-                      onChange={(e) => setEditingEmployee({ ...editingEmployee, role: e.target.value })}
-                      className="w-full px-3 py-2 bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded-lg text-neutral-900 dark:text-white"
+                      onChange={(v) => setEditingEmployee({ ...editingEmployee, role: v })}
+                      options={DEFAULT_ROLES}
+                      placeholder="Rol seçin..."
                     />
                   </div>
                 </div>

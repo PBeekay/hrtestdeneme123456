@@ -18,7 +18,8 @@ const RemindersWidget: React.FC<RemindersWidgetProps> = ({ delay = 0 }) => {
     try {
       const result = await api.getReminders();
       if (result.data) {
-        setReminders(result.data as Reminder[]);
+        const data = result.data as any;
+        setReminders(Array.isArray(data.reminders) ? data.reminders : (Array.isArray(data) ? data : []));
       }
     } catch (error) {
       console.error('Error fetching reminders:', error);

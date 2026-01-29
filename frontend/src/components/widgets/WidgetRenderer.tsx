@@ -106,30 +106,30 @@ export const renderWidget = (props: WidgetRendererProps): React.ReactNode | null
     case 'leave':
       return (
         <div key="leave" className="md:col-span-1 md:row-span-1">
-          <BentoCard className="bg-gradient-to-br from-teal-600 via-teal-700 to-teal-800 dark:from-teal-700 dark:via-teal-800 dark:to-teal-900 text-white border-teal-700 dark:border-teal-800 relative overflow-hidden h-full" delay={delay}>
-            <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full blur-xl"></div>
+          <BentoCard className="bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 relative overflow-hidden h-full" delay={delay}>
+            {/* <div className="absolute top-0 right-0 w-20 h-20 bg-teal-500/10 rounded-full blur-xl"></div> */}
             <div className="h-full flex flex-col relative">
               <div className="flex items-center space-x-1.5 mb-2">
                 <h2 className="text-sm font-semibold opacity-95">İzin Bakiyesi</h2>
               </div>
               <div className="flex-1 flex flex-col justify-center space-y-1.5">
-                <div className="flex justify-between items-center p-1.5 bg-white/10 rounded-lg backdrop-blur-sm hover:bg-white/20 transition-colors">
-                  <span className="text-[11px] font-medium">
+                <div className="flex justify-between items-center p-2 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg border border-neutral-100 dark:border-neutral-700">
+                  <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
                     Yıllık
                   </span>
-                  <span className="text-xl font-bold">{leaveBalance.annual}</span>
+                  <span className="text-xl font-bold text-neutral-900 dark:text-white">{leaveBalance.annual}</span>
                 </div>
-                <div className="flex justify-between items-center p-1.5 bg-white/10 rounded-lg backdrop-blur-sm hover:bg-white/20 transition-colors">
-                  <span className="text-[11px] font-medium">
+                <div className="flex justify-between items-center p-2 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg border border-neutral-100 dark:border-neutral-700">
+                  <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
                     Hastalık
                   </span>
-                  <span className="text-xl font-bold">{leaveBalance.sick}</span>
+                  <span className="text-xl font-bold text-neutral-900 dark:text-white">{leaveBalance.sick}</span>
                 </div>
-                <div className="flex justify-between items-center p-1.5 bg-white/10 rounded-lg backdrop-blur-sm hover:bg-white/20 transition-colors">
-                  <span className="text-[11px] font-medium">
+                <div className="flex justify-between items-center p-2 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg border border-neutral-100 dark:border-neutral-700">
+                  <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
                     Kişisel
                   </span>
-                  <span className="text-xl font-bold">{leaveBalance.personal}</span>
+                  <span className="text-xl font-bold text-neutral-900 dark:text-white">{leaveBalance.personal}</span>
                 </div>
               </div>
             </div>
@@ -140,7 +140,7 @@ export const renderWidget = (props: WidgetRendererProps): React.ReactNode | null
     case 'tasks':
       return (
         <div key="tasks" className="md:col-span-1 md:row-span-1">
-          <BentoCard className="bg-gradient-to-br from-slate-50 to-gray-50 dark:from-slate-900/20 dark:to-gray-900/20 border-slate-200 dark:border-slate-700 h-full" delay={delay}>
+          <BentoCard className="bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 h-full" delay={delay}>
             <div className="h-full flex flex-col">
               <div className="flex items-center space-x-1.5 mb-2">
                 <span className="text-lg">✓</span>
@@ -149,8 +149,8 @@ export const renderWidget = (props: WidgetRendererProps): React.ReactNode | null
               <div className="flex-1 flex flex-col justify-center">
                 <div className="text-center space-y-2">
                   <div className="relative inline-block">
-                    <div className="absolute inset-0 bg-primary-400 dark:bg-primary-600 blur-lg opacity-20 animate-pulse"></div>
-                    <div className="relative text-4xl font-bold bg-gradient-to-br from-primary-600 to-primary-800 dark:from-primary-400 dark:to-primary-600 bg-clip-text text-transparent animate-fadeIn">
+                    <div className="absolute inset-0 bg-primary-100 dark:bg-primary-900/20 blur-xl opacity-50"></div>
+                    <div className="relative text-4xl font-bold text-primary-600 dark:text-primary-400 animate-fadeIn">
                       {activeTasks.length}
                     </div>
                   </div>
@@ -176,7 +176,7 @@ export const renderWidget = (props: WidgetRendererProps): React.ReactNode | null
     case 'performance':
       return (
         <div key="performance" className="md:col-span-1 md:row-span-1">
-          <BentoCard className="bg-gradient-to-br from-slate-50 to-zinc-50 dark:from-slate-900/20 dark:to-zinc-900/20 border-slate-200 dark:border-slate-700 h-full" delay={delay}>
+          <BentoCard className="bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 h-full" delay={delay}>
             <div className="h-full flex flex-col">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center space-x-1.5">
@@ -239,7 +239,7 @@ export const renderWidget = (props: WidgetRendererProps): React.ReactNode | null
     case 'calendar':
       return (
         <div key="calendar" className="md:col-span-2 md:row-span-1">
-          <BentoCard className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 border-blue-200 dark:border-blue-800 h-full" delay={delay}>
+          <BentoCard className="bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 h-full" delay={delay}>
             <div className="h-full flex flex-col">
               <div className="flex items-center space-x-1.5 mb-2">
                 <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">📅 Takvim ve Hatırlatıcılar</h2>
@@ -261,7 +261,7 @@ export const renderWidget = (props: WidgetRendererProps): React.ReactNode | null
     case 'taskDetails':
       return (
         <div key="taskDetails" className="md:col-span-2 md:row-span-1">
-          <BentoCard className="bg-gradient-to-br from-neutral-50 to-stone-50 dark:from-neutral-900/20 dark:to-stone-900/20 border-neutral-200 dark:border-neutral-700 h-full" delay={delay}>
+          <BentoCard className="bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 h-full" delay={delay}>
             <div className="h-full flex flex-col">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center space-x-1.5">
@@ -320,7 +320,7 @@ export const renderWidget = (props: WidgetRendererProps): React.ReactNode | null
       if (dashboardData.assets && dashboardData.assets.length > 0) {
         return (
           <div key="assets" className="md:col-span-2 md:row-span-1">
-            <BentoCard className="bg-gradient-to-br from-purple-50 to-fuchsia-50 dark:from-purple-900/20 dark:to-fuchsia-900/20 border-purple-200 dark:border-purple-800 h-full" delay={delay}>
+            <BentoCard className="bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 h-full" delay={delay}>
               <AssetCard
                 assets={dashboardData.assets}
                 userRole={dashboardData.userInfo.userRole}
@@ -339,7 +339,7 @@ export const renderWidget = (props: WidgetRendererProps): React.ReactNode | null
     case 'announcements_mini':
       return (
         <div key="announcements_mini" className="md:col-span-1 md:row-span-1">
-          <BentoCard className="bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-indigo-900/20 dark:to-violet-900/20 border-indigo-200 dark:border-indigo-700 h-full" delay={delay}>
+          <BentoCard className="bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 h-full" delay={delay}>
             <div className="h-full flex flex-col">
               <div className="flex items-center space-x-1.5 mb-2">
                 <span className="text-lg">📢</span>
@@ -348,8 +348,8 @@ export const renderWidget = (props: WidgetRendererProps): React.ReactNode | null
               <div className="flex-1 flex flex-col justify-center">
                 <div className="text-center space-y-2">
                   <div className="relative inline-block">
-                    <div className="absolute inset-0 bg-indigo-400 dark:bg-indigo-600 blur-lg opacity-20 animate-pulse"></div>
-                    <div className="relative text-4xl font-bold bg-gradient-to-br from-indigo-600 to-violet-800 dark:from-indigo-400 dark:to-violet-600 bg-clip-text text-transparent animate-fadeIn">
+                    {/* <div className="absolute inset-0 bg-indigo-100 dark:bg-indigo-900/20 blur-lg opacity-50"></div> */}
+                    <div className="relative text-4xl font-bold text-indigo-600 dark:text-indigo-400 animate-fadeIn">
                       {filteredAnnouncements.length}
                     </div>
                   </div>

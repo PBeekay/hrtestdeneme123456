@@ -130,11 +130,8 @@ export const api = {
 
   // Leave Requests
   createLeaveRequest: async (data: any) => {
-    const userId = getUserIdFromToken();
-    if (!userId) {
-      return { status: 401, error: 'Kullanıcı kimliği bulunamadı' };
-    }
-    return fetchWithAuth(`/api/leave-requests?user_id=${userId}`, {
+    // Backend now derives user_id from the auth token
+    return fetchWithAuth('/api/leave-requests', {
       method: 'POST',
       body: JSON.stringify(data),
     });

@@ -1,7 +1,7 @@
 import React from 'react';
 
 interface StatCardProps {
-  icon: string;
+  icon: React.ReactNode;
   label: string;
   value: string | number;
   delay?: number;
@@ -49,18 +49,17 @@ const StatCard: React.FC<StatCardProps> = ({
       onKeyDown={
         interactive
           ? (e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                onClick?.();
-              }
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onClick?.();
             }
+          }
           : undefined
       }
-      className={`bg-stone-50/70 dark:bg-neutral-800/70 backdrop-blur-sm rounded-md p-3 border border-stone-200/50 dark:border-neutral-700 shadow-sm transition-all duration-150 animate-fadeInUp group ${
-        interactive
-          ? 'hover:shadow-md hover:scale-105 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500'
-          : ''
-      } ${disabled ? 'opacity-70 cursor-not-allowed' : ''}`}
+      className={`bg-white dark:bg-neutral-800 rounded-xl p-4 border border-neutral-100 dark:border-neutral-700 shadow-sm transition-all duration-150 animate-fadeInUp group ${interactive
+        ? 'hover:shadow-lg hover:-translate-y-0.5 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500'
+        : ''
+        } ${disabled ? 'opacity-70 cursor-not-allowed' : ''}`}
       style={{ animationDelay: `${delay}ms`, animationFillMode: 'both' }}
     >
       <div className="flex items-center space-x-2">

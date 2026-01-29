@@ -23,7 +23,7 @@ class DatabaseManager:
     def init_pool(self):
         db_config = {
             'host': os.getenv('DB_HOST', 'localhost'),
-            'port': int(os.getenv('DB_PORT', 3307)),
+            'port': int(os.getenv('DB_PORT', 3306)),
             'user': os.getenv('DB_USER', 'hrapp'),
             'password': os.getenv('DB_PASSWORD', 'hrpass123'),
             'database': os.getenv('DB_NAME', 'hrtest_db'),
@@ -45,7 +45,7 @@ class DatabaseManager:
             blocking=True,
             **db_config
         )
-        print("✅ Database connection pool initialized (OOP)")
+        print("[OK] Database connection pool initialized (OOP)")
 
     def get_connection(self):
         try:
@@ -89,9 +89,9 @@ class UserRepository(BaseRepository):
                 except:
                     try:
                         cursor.execute("ALTER TABLE users ADD COLUMN start_date DATETIME NULL")
-                        print("✅ Added start_date column to users table")
+                        print("[OK] Added start_date column to users table")
                     except Exception as e:
-                        print(f"⚠️ Failed to add start_date column: {e}")
+                        print(f"[WARNING] Failed to add start_date column: {e}")
 
                 # Check/Add tc_no
                 try:
@@ -99,18 +99,34 @@ class UserRepository(BaseRepository):
                 except:
                     try:
                         cursor.execute("ALTER TABLE users ADD COLUMN tc_no VARCHAR(11) NULL")
-                        print("✅ Added tc_no column to users table")
+                        print("[OK] Added tc_no column to users table")
                     except Exception as e:
-                        print(f"⚠️ Failed to add tc_no column: {e}")
+                        print(f"[WARNING] Failed to add tc_no column: {e}")
+
+                # Check/Add permissions
+                try:
+                    cursor.execute("SELECT permissions FROM users LIMIT 1")
+                except:
+                    try:
+                        cursor.execute("ALTER TABLE users ADD COLUMN permissions JSON DEFAULT NULL")
+                        print("[OK] Added permissions column to users table")
+                    except Exception as e:
+                        print(f"[WARNING] Failed to add permissions column: {e}")
+                        # Fallback for old mariadb/mysql versions
+                        try:
+                            cursor.execute("ALTER TABLE users ADD COLUMN permissions TEXT DEFAULT NULL")
+                            print("[OK] Added permissions column (TEXT) to users table")
+                        except:
+                            pass
         except Exception as e:
-            print(f"❌ Schema check error: {e}")
+            print(f"[ERROR] Schema check error: {e}")
 
     def get_by_id(self, user_id: int) -> Optional[Dict[str, Any]]:
         try:
             with self.db.get_cursor() as cursor:
                 try:
                     cursor.execute(
-                        "SELECT id, username, full_name, email, role, department, avatar, user_role, start_date, tc_no FROM users WHERE id = %s",
+                        "SELECT id, username, full_name, email, role, department, avatar, user_role, start_date, tc_no, permissions FROM users WHERE id = %s",
                         (user_id,)
                     )
                 except:
@@ -201,7 +217,7 @@ class UserRepository(BaseRepository):
         try:
             with conn.cursor() as cursor:
                 query = """
-                    SELECT id, full_name as name, role, department, email, avatar, user_role, created_at as startDate
+                    SELECT id, full_name as name, role, department, email, avatar, user_role, status, created_at as startDate
                     FROM users ORDER BY full_name ASC
                 """
                 cursor.execute(query)
@@ -217,7 +233,7 @@ class UserRepository(BaseRepository):
                         'email': emp['email'],
                         'avatar': emp.get('avatar', emp['name'][:2].upper()),
                         'startDate': emp['startDate'].strftime('%Y-%m-%d') if emp['startDate'] else '',
-                        'status': 'active',
+                        'status': emp['status'] or 'active',
                         'documents': []
                     }
                     result.append(employee_data)
@@ -284,9 +300,13 @@ class UserRepository(BaseRepository):
                 # İsim baş harflerinden avatar kısaltması oluştur
                 initials = ''.join([word[0].upper() for word in data['name'].split()[:2]])
                 
+                import json
+                
                 # Temel sorgu
                 columns = ["username", "password_hash", "full_name", "email", "role", "department", "avatar", "user_role"]
-                values = [username, hashed, data['name'], email, data['role'], data['department'], initials, 'employee']
+                # Use provided user_role or default to 'employee'
+                target_role = data.get('user_role', 'employee')
+                values = [username, hashed, data['name'], email, data['role'], data['department'], initials, target_role]
                 placeholders = ["%s"] * 8
                 
                 # Opsiyonel alanlar
@@ -295,7 +315,8 @@ class UserRepository(BaseRepository):
                     'manager': data.get('manager'),
                     'location': data.get('location'),
                     'start_date': data.get('startDate'),
-                    'status': data.get('status', 'active')
+                    'status': data.get('status', 'active'),
+                    'permissions': json.dumps(data.get('permissions')) if data.get('permissions') else None
                 }
                 
                 for field, value in optional_fields.items():
@@ -417,9 +438,9 @@ class LeaveRepository(BaseRepository):
                 try:
                     # Convert ENUM to VARCHAR to allow any leave type
                     cursor.execute("ALTER TABLE leave_requests MODIFY COLUMN leave_type VARCHAR(50)")
-                    print("✅ Updated leave_type column to VARCHAR(50)")
+                    print("[OK] Updated leave_type column to VARCHAR(50)")
                 except Exception as e:
-                    print(f"⚠️ Failed to update leave_type column: {e}")
+                    print(f"[WARNING] Failed to update leave_type column: {e}")
 
                 # 2. Check/Add new balance columns
                 new_columns = {
@@ -436,12 +457,12 @@ class LeaveRepository(BaseRepository):
                     if col not in existing_columns:
                         try:
                             cursor.execute(f"ALTER TABLE leave_balance ADD COLUMN {col} {definition}")
-                            print(f"✅ Added {col} to leave_balance table")
+                            print(f"[OK] Added {col} to leave_balance table")
                         except Exception as e:
-                            print(f"⚠️ Failed to add {col} column: {e}")
+                            print(f"[WARNING] Failed to add {col} column: {e}")
 
         except Exception as e:
-            print(f"❌ Leave Request schema check error: {e}")
+            print(f"[ERROR] Leave Request schema check error: {e}")
 
     def get_requests(self, user_id: int, status: Optional[str] = None) -> List[Dict[str, Any]]:
         try:
@@ -560,9 +581,9 @@ class LeaveRepository(BaseRepository):
                 
                 query = f"UPDATE leave_balance SET {col_name} = {col_name} - %s WHERE user_id = %s"
                 cursor.execute(query, (days_int, user_id))
-                print(f"✅ Deducted {days_int} days from {col_name} for user {user_id}")
+                print(f"[OK] Deducted {days_int} days from {col_name} for user {user_id}")
             except Exception as e:
-                print(f"❌ Failed to deduct balance: {e}")
+                print(f"[ERROR] Failed to deduct balance: {e}")
 
     def get_balance(self, user_id: int, year: int = 2025) -> Dict[str, int]:
         # First, check if annual leave should be renewed based on seniority
@@ -670,7 +691,7 @@ class LeaveRepository(BaseRepository):
                                 """,
                                 (user_id, now.year, entitlement)
                             )
-                            print(f"✅ Created leave balance for user {user_id} year {now.year} with {entitlement} annual days")
+                            print(f"[OK] Created leave balance for user {user_id} year {now.year} with {entitlement} annual days")
                         else:
                             # Record exists. 
                             # Optional: If we want to support 'adding' entitlement on anniversary while record exists...
@@ -817,6 +838,8 @@ class AssetRepository(BaseRepository):
             return {}
         finally:
             conn.close()
+
+
 
 class TaskRepository(BaseRepository):
     def get_by_user(self, user_id: int, status: str = 'pending') -> List[Dict[str, Any]]:
@@ -971,6 +994,7 @@ class DashboardRepository(BaseRepository):
             },
             "leaveBalance": self.leave_repo.get_balance(user_id),
             "pendingTasks": self.task_repo.get_by_user(user_id, 'pending'),
+            "leaveRequests": self.leave_repo.get_requests(user_id),
             "performance": [], # Placeholder
             "announcements": self.announcement_repo.get_active()
         }
@@ -1228,3 +1252,67 @@ class DocumentRepository(BaseRepository):
         except Exception as e:
             print(f"Delete document error: {e}")
             return False
+
+class AuditLogRepository(BaseRepository):
+    def __init__(self):
+        super().__init__()
+        self._ensure_table()
+
+    def _ensure_table(self):
+        try:
+            with self.db.get_cursor() as cursor:
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS audit_logs (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        user_id INT NULL,
+                        username VARCHAR(100) NULL,
+                        action VARCHAR(50) NOT NULL,
+                        entity VARCHAR(50) NULL,
+                        entity_id INT NULL,
+                        details TEXT NULL,
+                        ip_address VARCHAR(50) NULL,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        INDEX idx_user_id (user_id),
+                        INDEX idx_action (action),
+                        INDEX idx_created_at (created_at)
+                    )
+                """)
+                print("[OK] Audit log table initialized")
+        except Exception as e:
+            print(f"[ERROR] Audit Log schema check error: {e}")
+
+    def log_action(self, user_id: Optional[int], username: Optional[str], action: str, 
+                   entity: Optional[str] = None, entity_id: Optional[int] = None, 
+                   details: Optional[str] = None, ip_address: Optional[str] = None) -> bool:
+        try:
+            with self.db.get_cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO audit_logs (user_id, username, action, entity, entity_id, details, ip_address)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (user_id, username, action, entity, entity_id, details, ip_address)
+                )
+                return True
+        except Exception as e:
+            print(f"[ERROR] Audit logging failed: {e}")
+            return False
+
+    def get_logs(self, limit: int = 100, user_id: Optional[int] = None) -> List[Dict]:
+        try:
+            with self.db.get_cursor() as cursor:
+                query = "SELECT * FROM audit_logs"
+                params = []
+                
+                if user_id:
+                    query += " WHERE user_id = %s"
+                    params.append(user_id)
+                
+                query += " ORDER BY created_at DESC LIMIT %s"
+                params.append(limit)
+                
+                cursor.execute(query, params)
+                return cursor.fetchall()
+        except Exception as e:
+            print(f"Get audit logs error: {e}")
+            return []

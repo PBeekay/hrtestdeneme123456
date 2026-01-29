@@ -15,7 +15,8 @@ from repositories import (
     SessionRepository,
     WorkScheduleRepository,
     ReminderRepository,
-    DocumentRepository
+    DocumentRepository,
+    AuditLogRepository
 )
 
 # Initialize Repositories
@@ -30,6 +31,7 @@ session_repo = SessionRepository()
 schedule_repo = WorkScheduleRepository()
 reminder_repo = ReminderRepository()
 doc_repo = DocumentRepository()
+audit_repo = AuditLogRepository()
 
 # Initialize Rate Limiter
 limiter = Limiter(key_func=get_remote_address)
@@ -41,32 +43,32 @@ async def get_current_user(authorization: Optional[str] = Header(None, alias="Au
     Returns user data if valid, raises 401 if invalid/expired
     """
     if not authorization:
-        logger.warning("❌ Authorization header missing")
+        logger.warning("[ERROR] Authorization header missing")
         raise HTTPException(status_code=401, detail="Authorization header missing")
     
     # Extract token from "Bearer <token>"
     try:
         parts = authorization.split()
         if len(parts) != 2:
-            logger.warning(f"❌ Invalid authorization header format: {authorization[:50]}")
+            logger.warning(f"[ERROR] Invalid authorization header format: {authorization[:50]}")
             raise HTTPException(status_code=401, detail="Invalid authorization header format")
         
         scheme, token = parts
         if scheme.lower() != "bearer":
-            logger.warning(f"❌ Invalid authentication scheme: {scheme}")
+            logger.warning(f"[ERROR] Invalid authentication scheme: {scheme}")
             raise HTTPException(status_code=401, detail="Invalid authentication scheme")
     except ValueError as e:
-        logger.warning(f"❌ Error parsing authorization header: {e}")
+        logger.warning(f"[ERROR] Error parsing authorization header: {e}")
         raise HTTPException(status_code=401, detail="Invalid authorization header format")
     
     # Debug: Log token format (first/last 10 chars only for security)
-    logger.debug(f"🔑 Verifying token: {token[:10]}...{token[-10:] if len(token) > 20 else ''}")
+    logger.debug(f"[AUTH] Verifying token: {token[:10]}...{token[-10:] if len(token) > 20 else ''}")
     
     # Verify token
     payload = verify_token(token)
     if not payload:
-        logger.warning("❌ Token verification failed")
+        logger.warning("[ERROR] Token verification failed")
         raise HTTPException(status_code=401, detail="Token expired or invalid")
     
-    logger.debug(f"✅ Token verified for user: {payload.get('sub')}")
+    logger.debug(f"[OK] Token verified for user: {payload.get('sub')}")
     return payload

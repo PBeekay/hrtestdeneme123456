@@ -6,7 +6,7 @@ from slowapi.util import get_remote_address
 
 from auth import create_access_token
 from logger import logger, log_auth_attempt
-from dependencies import user_repo, session_repo, limiter
+from dependencies import user_repo, session_repo, limiter, audit_repo
 from schemas import LoginRequest, LoginResponse, LogoutRequest
 
 router = APIRouter(tags=["Authentication"])
@@ -21,7 +21,7 @@ def login(request: Request, credentials: LoginRequest):
     client_ip = get_remote_address(request)
     
     # Log login attempt
-    logger.info(f"🔐 Login attempt | Username: {credentials.username} | IP: {client_ip}")
+    logger.info(f"[AUTH] Login attempt | Username: {credentials.username} | IP: {client_ip}")
     
     # Authenticate user against database
     user = user_repo.authenticate(credentials.username, credentials.password)
@@ -45,7 +45,16 @@ def login(request: Request, credentials: LoginRequest):
         
         # Log successful login
         log_auth_attempt(credentials.username, True, client_ip)
-        logger.info(f"✅ Login successful | User: {user['username']} | Role: {user.get('user_role')} | IP: {client_ip}")
+        logger.info(f"[OK] Login successful | User: {user['username']} | Role: {user.get('user_role')} | IP: {client_ip}")
+        
+        # AUDIT LOG
+        audit_repo.log_action(
+            user_id=user['id'], 
+            username=user['username'], 
+            action="LOGIN", 
+            entity="session", 
+            ip_address=client_ip
+        )
         
         return {
             "success": True,
@@ -57,7 +66,15 @@ def login(request: Request, credentials: LoginRequest):
     else:
         # Log failed login
         log_auth_attempt(credentials.username, False, client_ip)
-        logger.warning(f"❌ Login failed | Username: {credentials.username} | IP: {client_ip}")
+        logger.warning(f"[ERROR] Login failed | Username: {credentials.username} | IP: {client_ip}")
+
+        # AUDIT LOG (Login Failed)
+        audit_repo.log_action(
+            user_id=None, 
+            username=credentials.username, 
+            action="LOGIN_FAILED", 
+            ip_address=client_ip
+        )
         raise HTTPException(
             status_code=401,
             detail="Kullanıcı adı veya şifre hatalı!"

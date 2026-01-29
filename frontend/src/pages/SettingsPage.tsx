@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
+import { Users, Building, Settings, Plus, ArrowLeft } from 'lucide-react';
 
 type ToastFn = (message: string, type?: 'success' | 'error' | 'info' | 'warning') => void;
 
@@ -185,7 +186,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ userRole = 'employee', onBa
             onClick={onBack}
             className="mb-4 inline-flex items-center space-x-2 px-4 py-2 rounded-md border border-neutral-200 dark:border-neutral-700 bg-white/70 dark:bg-neutral-800/70 shadow-sm text-sm font-semibold text-neutral-700 dark:text-neutral-200 hover:-translate-y-0.5 transition-all"
           >
-            <span>←</span>
+            <ArrowLeft className="w-4 h-4" />
             <span>Geri Dön</span>
           </button>
           <div className="bg-white dark:bg-neutral-800 rounded-lg p-8 text-center">
@@ -222,7 +223,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ userRole = 'employee', onBa
             onClick={onBack}
             className="inline-flex items-center space-x-2 px-4 py-2 rounded-md border border-neutral-200 dark:border-neutral-700 bg-white/70 dark:bg-neutral-800/70 shadow-sm text-sm font-semibold text-neutral-700 dark:text-neutral-200 hover:-translate-y-0.5 transition-all"
           >
-            <span>←</span>
+            <ArrowLeft className="w-4 h-4" />
             <span>Geri Dön</span>
           </button>
         </div>
@@ -232,33 +233,33 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ userRole = 'employee', onBa
           <div className="flex border-b border-neutral-200 dark:border-neutral-700">
             <button
               onClick={() => setActiveTab('users')}
-              className={`px-6 py-3 font-semibold text-sm transition-colors ${
-                activeTab === 'users'
+              className={`inline-flex items-center justify-center px-6 py-3 font-semibold text-sm transition-colors ${activeTab === 'users'
                   ? 'text-primary-600 dark:text-primary-400 border-b-2 border-primary-600 dark:border-primary-400'
                   : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200'
-              }`}
+                }`}
             >
-              👥 Kullanıcı Yönetimi
+              <Users className="w-4 h-4 mr-2" />
+              Kullanıcı Yönetimi
             </button>
             <button
               onClick={() => setActiveTab('departments')}
-              className={`px-6 py-3 font-semibold text-sm transition-colors ${
-                activeTab === 'departments'
+              className={`inline-flex items-center justify-center px-6 py-3 font-semibold text-sm transition-colors ${activeTab === 'departments'
                   ? 'text-primary-600 dark:text-primary-400 border-b-2 border-primary-600 dark:border-primary-400'
                   : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200'
-              }`}
+                }`}
             >
-              🏢 Departmanlar
+              <Building className="w-4 h-4 mr-2" />
+              Departmanlar
             </button>
             <button
               onClick={() => setActiveTab('system')}
-              className={`px-6 py-3 font-semibold text-sm transition-colors ${
-                activeTab === 'system'
+              className={`inline-flex items-center justify-center px-6 py-3 font-semibold text-sm transition-colors ${activeTab === 'system'
                   ? 'text-primary-600 dark:text-primary-400 border-b-2 border-primary-600 dark:border-primary-400'
                   : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200'
-              }`}
+                }`}
             >
-              ⚙️ Sistem Ayarları
+              <Settings className="w-4 h-4 mr-2" />
+              Sistem Ayarları
             </button>
           </div>
 
@@ -270,9 +271,10 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ userRole = 'employee', onBa
                   <h2 className="text-xl font-bold text-neutral-900 dark:text-white">Kullanıcı Yönetimi</h2>
                   <button
                     onClick={() => setShowCreateAdmin(true)}
-                    className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-semibold hover:bg-green-700 transition-colors"
+                    className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md text-sm font-semibold hover:bg-green-700 transition-colors"
                   >
-                    ➕ Admin Ekle
+                    <Plus className="w-4 h-4 mr-2" />
+                    Admin Ekle
                   </button>
                 </div>
 

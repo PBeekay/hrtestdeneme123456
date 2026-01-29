@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { validateUsername, validatePassword, sanitizeInput } from '../utils/validation';
+import { User, Lock, AlertCircle } from 'lucide-react';
 
 interface LoginPageProps {
   onLogin: (username: string, password: string) => void;
@@ -43,9 +44,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, error }) => {
         {/* Logo and Title */}
         <div className="text-center mb-6 animate-fadeIn">
           <div className="inline-block mb-4">
-            <img 
-              src="/vr_logo.png" 
-              alt="VR Logo" 
+            <img
+              src="/vr_logo.png"
+              alt="VR Logo"
               className="h-14 w-auto mx-auto drop-shadow-2xl"
             />
           </div>
@@ -63,7 +64,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, error }) => {
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <span className="text-neutral-400">👤</span>
+                  <User className="w-5 h-5 text-neutral-400" />
                 </div>
                 <input
                   id="username"
@@ -89,7 +90,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, error }) => {
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <span className="text-neutral-400">🔒</span>
+                  <Lock className="w-5 h-5 text-neutral-400" />
                 </div>
                 <input
                   id="password"
@@ -119,7 +120,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, error }) => {
             {(error || validationError) && (
               <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-md p-3 animate-shake">
                 <div className="flex items-center space-x-2">
-                  <span className="text-red-600 dark:text-red-400 font-bold">!</span>
+                  <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
                   <p className="text-sm font-medium text-red-600 dark:text-red-400">{validationError || error}</p>
                 </div>
               </div>
@@ -132,15 +133,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, error }) => {
             >
               Giriş Yap
             </button>
-
-            {/* Info */}
-            <div className="mt-4 p-3 bg-primary-50 dark:bg-primary-900/20 rounded-md">
-              <p className="text-xs text-center text-primary-700 dark:text-primary-300">
-                <span className="font-semibold">Demo Hesap:</span><br/>
-                Kullanıcı: <span className="font-mono">ikadmin</span><br/>
-                Şifre: <span className="font-mono">admin123</span>
-              </p>
-            </div>
           </form>
         </div>
 

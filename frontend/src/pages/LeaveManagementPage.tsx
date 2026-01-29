@@ -2,6 +2,17 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import api from '../services/api';
 import { LeaveBalance, LeaveRequest } from '../types';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import {
+  Sun,
+  Activity,
+  User,
+  Baby,
+  Heart,
+  Gem,
+  Moon,
+  Clock,
+  ArrowLeft
+} from 'lucide-react';
 
 type ToastFn = (message: string, type?: 'success' | 'error' | 'info' | 'warning') => void;
 
@@ -17,6 +28,20 @@ const leaveTypeLabels: Record<LeaveRequest['leaveType'], string> = {
   annual: 'Yıllık İzin',
   sick: 'Hastalık İzni',
   personal: 'Mazeret İzni',
+  paternity: 'Babalık İzni',
+  maternity: 'Doğum İzni',
+  marriage: 'Evlilik İzni',
+  death: 'Vefat İzni',
+};
+
+const leaveTooltips: Record<string, string> = {
+  annual: "4857 sayılı İş Kanunu'na göre, hizmet süresi 1 yıldan 5 yıla kadar olanlara 14 gün, 5-15 yıl olanlara 20 gün, 15 yıldan fazla olanlara 26 günden az olmamak üzere verilir.",
+  sick: "Hastalık durumunda doktor raporu ile belgelenmesi şartıyla kullanılır. SGK ve İş Kanunu mevzuatına tabidir.",
+  personal: "İşverenin takdirine bağlı olarak veya iş sözleşmesinde belirtilen özel mazeretler (taşınma vb.) için verilen izindir.",
+  paternity: "4857 sayılı İş Kanunu Ek Madde 2'ye göre eşi doğum yapan işçiye 5 gün ücretli izin verilir.",
+  maternity: "4857 sayılı İş Kanunu Madde 74'e göre doğumdan önceki 8 hafta ve doğumdan sonraki 8 hafta olmak üzere toplam 16 haftadır.",
+  marriage: "4857 sayılı İş Kanunu Ek Madde 2'ye göre işçiye evlenmesi halinde 3 gün ücretli izin verilir.",
+  death: "4857 sayılı İş Kanunu Ek Madde 2'ye göre işçinin anne, baba, eş, çocuk veya kardeşinin ölümü halinde 3 gün ücretli izin verilir."
 };
 
 const LeaveManagementPage: React.FC<LeaveManagementPageProps> = ({
@@ -54,6 +79,9 @@ const LeaveManagementPage: React.FC<LeaveManagementPageProps> = ({
     onConfirm: () => { }
   });
 
+  const [adminFilter, setAdminFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
+  const [adminSearch, setAdminSearch] = useState('');
+
   useEffect(() => {
     setEmployeeHistory(employeeRequests || []);
   }, [employeeRequests]);
@@ -61,7 +89,6 @@ const LeaveManagementPage: React.FC<LeaveManagementPageProps> = ({
   const fetchAdminRequests = useCallback(async () => {
     setAdminLoading(true);
     setAdminError(null);
-    // Call without user_id to fetch ALL requests (backend logic for admins)
     const result = await api.getLeaveRequests(undefined);
     if (result.data && result.status === 200) {
       const requests = (result.data as any).leaveRequests || result.data;
@@ -119,7 +146,6 @@ const LeaveManagementPage: React.FC<LeaveManagementPageProps> = ({
         return;
       }
 
-      // Construct Date objects
       const startDateTimeStr = `${formData.startDate} ${formData.isHourly ? formData.startTime : '09:00'}`;
       const endDateTimeStr = `${formData.endDate} ${formData.isHourly ? formData.endTime : '18:00'}`;
 
@@ -133,12 +159,9 @@ const LeaveManagementPage: React.FC<LeaveManagementPageProps> = ({
 
       let dayCount = 0;
       if (formData.isHourly) {
-        // Calculate in hours (ms / 1000 / 60 / 60)
         const diffHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-        // Assuming 9 working hours per day for calculation ratio
         dayCount = parseFloat((diffHours / 9).toFixed(2));
       } else {
-        // Daily calculation (inclusive)
         const diffTime = new Date(formData.endDate).getTime() - new Date(formData.startDate).getTime();
         dayCount = (diffTime / (1000 * 60 * 60 * 24)) + 1;
       }
@@ -164,7 +187,6 @@ const LeaveManagementPage: React.FC<LeaveManagementPageProps> = ({
           isHourly: false,
           reason: '',
         });
-        // Optimistic update
         setEmployeeHistory((prev) => [
           {
             id: Date.now(),
@@ -191,24 +213,283 @@ const LeaveManagementPage: React.FC<LeaveManagementPageProps> = ({
         label: 'Yıllık',
         total: leaveBalance.annual,
         accent: 'from-amber-500 to-orange-500',
-        icon: '🏖️',
+        icon: <Sun className="w-6 h-6" />,
       },
       {
         key: 'sick',
         label: 'Hastalık',
         total: leaveBalance.sick,
         accent: 'from-rose-500 to-pink-500',
-        icon: '🤒',
+        icon: <Activity className="w-6 h-6" />,
       },
       {
         key: 'personal',
         label: 'Mazeret',
         total: leaveBalance.personal,
         accent: 'from-sky-500 to-blue-500',
-        icon: '🎈',
+        icon: <User className="w-6 h-6" />,
+      },
+      {
+        key: 'paternity',
+        label: 'Babalık',
+        total: leaveBalance.paternity || 5,
+        accent: 'from-blue-500 to-indigo-500',
+        icon: <Baby className="w-6 h-6" />,
+      },
+      {
+        key: 'maternity',
+        label: 'Doğum',
+        total: leaveBalance.maternity || 112,
+        accent: 'from-pink-400 to-rose-400',
+        icon: <Heart className="w-6 h-6" />,
+      },
+      {
+        key: 'marriage',
+        label: 'Evlilik',
+        total: leaveBalance.marriage || 3,
+        accent: 'from-purple-500 to-fuchsia-500',
+        icon: <Gem className="w-6 h-6" />,
+      },
+      {
+        key: 'death',
+        label: 'Vefat',
+        total: leaveBalance.death || 3,
+        accent: 'from-gray-500 to-slate-500',
+        icon: <Moon className="w-6 h-6" />,
       },
     ],
     [leaveBalance]
+  );
+
+  const processedAdminRequests = useMemo(() => {
+    return adminRequests.filter(req => {
+      const matchesStatus = adminFilter === 'all' ? true : req.status === adminFilter;
+      const matchesSearch = !adminSearch ||
+        (req.reason && req.reason.toLowerCase().includes(adminSearch.toLowerCase())) ||
+        leaveTypeLabels[req.leaveType].toLowerCase().includes(adminSearch.toLowerCase());
+      return matchesStatus && matchesSearch;
+    });
+  }, [adminRequests, adminFilter, adminSearch]);
+
+  const EmployeeHistoryComponent = (
+    <div className="bg-stone-50 dark:bg-neutral-900 rounded-3xl p-6 border border-stone-200/50 dark:border-neutral-800 shadow-lg">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2 className="text-xl font-semibold text-neutral-900 dark:text-white">Talep Geçmişim</h2>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+            Son 6 ay içindeki izin talepleriniz
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1 custom-scrollbar">
+        {employeeHistory.length === 0 ? (
+          <div className="flex items-center justify-center h-32 text-sm text-neutral-500 dark:text-neutral-400 bg-neutral-50 dark:bg-neutral-800/50 rounded-md border border-dashed border-neutral-200 dark:border-neutral-700">
+            Henüz talep oluşturmadınız.
+          </div>
+        ) : (
+          employeeHistory.map((request) => (
+            <div
+              key={request.id}
+              className="p-4 rounded-md border border-neutral-200 dark:border-neutral-800 bg-white/80 dark:bg-neutral-800/60 shadow-sm space-y-1"
+            >
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-semibold text-neutral-900 dark:text-white">
+                  {leaveTypeLabels[request.leaveType]}
+                </div>
+                <span
+                  className={`text-xs font-bold px-2 py-1 rounded-full ${request.status === 'approved'
+                    ? 'bg-green-100 text-green-700'
+                    : request.status === 'rejected'
+                      ? 'bg-red-100 text-red-600'
+                      : 'bg-amber-100 text-amber-600'
+                    }`}
+                >
+                  {request.status === 'approved'
+                    ? 'Onaylandı'
+                    : request.status === 'rejected'
+                      ? 'Reddedildi'
+                      : 'Beklemede'}
+                </span>
+              </div>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                {request.startDate} → {request.endDate} • {request.totalDays} gün
+              </p>
+              {request.reason && (
+                <p className="text-sm text-neutral-600 dark:text-neutral-300 line-clamp-2">
+                  {request.reason}
+                </p>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+
+  const AdminPanelComponent = (
+    <div className="bg-stone-50 dark:bg-neutral-900 rounded-3xl p-6 border border-stone-200/50 dark:border-neutral-800 shadow-lg space-y-4">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-semibold text-neutral-900 dark:text-white">Gelen Talepler</h2>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+            Yöneticisi olduğunuz çalışanların izin taleplerini yönetin.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => {
+              const csvContent = "data:text/csv;charset=utf-8,"
+                + "ID,Tur,Baslangic,Bitis,Sure,Durum,Aciklama\n"
+                + processedAdminRequests.map(r => `${r.id},${leaveTypeLabels[r.leaveType]},${r.startDate},${r.endDate},${r.totalDays},${r.status},"${r.reason || ''}"`).join("\n");
+              const encodedUri = encodeURI(csvContent);
+              const link = document.createElement("a");
+              link.setAttribute("href", encodedUri);
+              link.setAttribute("download", "izin_talepleri.csv");
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              addToast('Rapor indirildi', 'success');
+            }}
+            className="flex items-center space-x-2 px-3 py-2 rounded-md border border-neutral-200 dark:border-neutral-700 text-sm font-semibold text-neutral-600 dark:text-neutral-300 hover:bg-white dark:hover:bg-neutral-800 transition-colors"
+          >
+            <span>📥 Excel İndir</span>
+          </button>
+          <button
+            onClick={fetchAdminRequests}
+            className="px-4 py-2 rounded-md bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-sm font-semibold text-neutral-600 dark:text-neutral-300 hover:border-primary-400"
+          >
+            Yenile
+          </button>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col md:flex-row gap-4 bg-white dark:bg-neutral-800/50 p-4 rounded-lg border border-neutral-200 dark:border-neutral-700">
+        <div className="flex-1">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Çalışan adı, izin türü veya açıklama ara..."
+              className="w-full pl-9 pr-4 py-2 rounded-md border border-neutral-300 dark:border-neutral-600 bg-transparent text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+              value={adminSearch}
+              onChange={(e) => setAdminSearch(e.target.value)}
+            />
+            <div className="absolute left-3 top-2.5 text-neutral-400">🔎</div>
+          </div>
+        </div>
+
+        <div className="flex p-1 bg-neutral-100 dark:bg-neutral-900 rounded-md">
+          {(['pending', 'approved', 'rejected', 'all'] as const).map(status => (
+            <button
+              key={status}
+              onClick={() => setAdminFilter(status)}
+              className={`px-4 py-1.5 text-xs font-medium rounded-md transition-all ${adminFilter === status
+                ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white shadow-sm ring-1 ring-black/5 dark:ring-white/10'
+                : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
+                }`}
+            >
+              {status === 'pending' && 'Bekleyen'}
+              {status === 'approved' && 'Onaylanan'}
+              {status === 'rejected' && 'Reddedilen'}
+              {status === 'all' && 'Tümü'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="overflow-x-auto custom-scrollbar">
+        <table className="min-w-full text-sm">
+          <thead>
+            <tr className="text-left text-neutral-500 dark:text-neutral-400 uppercase text-xs tracking-wider">
+              <th className="py-3 pr-4">Çalışan</th>
+              <th className="py-3 pr-4">Tür</th>
+              <th className="py-3 pr-4">Tarih Aralığı</th>
+              <th className="py-3 pr-4">Süre</th>
+              <th className="py-3 pr-4">Durum</th>
+              <th className="py-3">İşlemler</th>
+            </tr>
+          </thead>
+          <tbody>
+            {adminLoading ? (
+              <tr>
+                <td colSpan={6} className="py-6 text-center text-neutral-500">
+                  Talepler yükleniyor...
+                </td>
+              </tr>
+            ) : processedAdminRequests.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="py-6 text-center text-neutral-500">
+                  {adminFilter === 'all' && !adminSearch
+                    ? 'Hiç izin talebi bulunmuyor.'
+                    : 'Kriterlere uygun talep bulunamadı.'}
+                </td>
+              </tr>
+            ) : (
+              processedAdminRequests.map((request) => (
+                <tr
+                  key={request.id}
+                  className="border-t border-neutral-100 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800/20 transition-colors"
+                >
+                  <td className="py-4 pr-4 font-semibold text-neutral-800 dark:text-white">
+                    {request.reason?.split('|')[0] || (
+                      <span className="opacity-50 italic">Çalışan</span>
+                    )}
+                  </td>
+                  <td className="py-4 pr-4">
+                    <span className="inline-flex items-center px-2 py-1 rounded-full bg-primary-50 text-primary-600 text-xs font-semibold">
+                      {leaveTypeLabels[request.leaveType]}
+                    </span>
+                  </td>
+                  <td className="py-4 pr-4 text-neutral-600 dark:text-neutral-300">
+                    {request.startDate} → {request.endDate}
+                  </td>
+                  <td className="py-4 pr-4 text-neutral-600 dark:text-neutral-300">
+                    {request.totalDays} gün
+                  </td>
+                  <td className="py-4 pr-4">
+                    <span
+                      className={`text-xs font-bold px-2 py-1 rounded-full ${request.status === 'approved'
+                        ? 'bg-green-100 text-green-700'
+                        : request.status === 'rejected'
+                          ? 'bg-red-100 text-red-600'
+                          : 'bg-amber-100 text-amber-600'
+                        }`}
+                    >
+                      {request.status === 'approved'
+                        ? 'Onaylandı'
+                        : request.status === 'rejected'
+                          ? 'Reddedildi'
+                          : 'Beklemede'}
+                    </span>
+                  </td>
+                  <td className="py-4 space-x-2">
+                    {request.status === 'pending' ? (
+                      <>
+                        <button
+                          onClick={() => handleAdminAction(request.id, 'approved')}
+                          className="px-3 py-1.5 rounded-md bg-green-100 text-green-700 text-xs font-semibold hover:bg-green-200 transition-colors"
+                        >
+                          Onayla
+                        </button>
+                        <button
+                          onClick={() => handleAdminAction(request.id, 'rejected')}
+                          className="px-3 py-1.5 rounded-md bg-red-100 text-red-600 text-xs font-semibold hover:bg-red-200 transition-colors"
+                        >
+                          Reddet
+                        </button>
+                      </>
+                    ) : (
+                      <span className="text-xs text-neutral-400">İşlem yapıldı</span>
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 
   return (
@@ -223,14 +504,15 @@ const LeaveManagementPage: React.FC<LeaveManagementPageProps> = ({
         onConfirm={confirmDialog.onConfirm}
         onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
       />
-      <div className="min-h-screen bg-[#F0F0EB] dark:bg-[#0F172A] p-4 md:p-8">
+      <div className="h-full space-y-6">
         <div className="max-w-6xl mx-auto space-y-6">
+          {/* Top Bar */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <button
               onClick={onBack}
               className="inline-flex items-center space-x-2 px-4 py-2 rounded-md border border-neutral-200 dark:border-neutral-700 bg-white/70 dark:bg-neutral-800/70 shadow-sm text-sm font-semibold text-neutral-700 dark:text-neutral-200 hover:-translate-y-0.5 transition-all"
             >
-              <span>←</span>
+              <ArrowLeft className="w-4 h-4" />
               <span>Kontrol Paneline Dön</span>
             </button>
             <div className="text-right">
@@ -239,7 +521,8 @@ const LeaveManagementPage: React.FC<LeaveManagementPageProps> = ({
             </div>
           </div>
 
-          <div className="bg-stone-50 dark:bg-neutral-900 rounded-lg p-6 border border-stone-200/50 dark:border-neutral-800 shadow-xl space-y-4">
+          {/* ... Leave Center & Create Request ... */}
+          <div className="bg-stone-50 dark:bg-neutral-900 rounded-3xl p-6 border border-stone-200/50 dark:border-neutral-800 shadow-xl space-y-4">
             <div>
               <p className="text-sm uppercase tracking-wider text-primary-500 font-semibold">Leave Center</p>
               <h1 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white mt-2">
@@ -250,42 +533,26 @@ const LeaveManagementPage: React.FC<LeaveManagementPageProps> = ({
               </p>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
               {leaveSummary.map((item) => (
                 <div
                   key={item.key}
-                  className="bg-gradient-to-br from-white/90 to-white/40 dark:from-neutral-800/70 dark:to-neutral-900/50 rounded-md p-4 border border-white/40 dark:border-neutral-800 shadow-lg"
+                  className="bg-white dark:bg-neutral-800 rounded-lg p-3 border border-neutral-200 dark:border-neutral-700 shadow-sm flex flex-col items-center justify-center text-center space-y-1 hover:shadow-md transition-shadow"
                 >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="text-2xl">{item.icon}</div>
-                    <span className="text-xs font-semibold text-neutral-500 uppercase">{item.label}</span>
-                  </div>
-                  <p className="text-4xl font-black text-neutral-900 dark:text-white">{item.total}</p>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">Gün kalan</p>
-                  <div className="mt-3 h-2 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
-                    <div className={`h-full bg-gradient-to-r ${item.accent} rounded-full`} style={{ width: Math.min((item.total / 30) * 100, 100) + '%' }} />
+                  <div className="text-primary-600 dark:text-primary-400">{item.icon}</div>
+                  <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wide">{item.label}</span>
+                  <div className="flex items-baseline space-x-1">
+                    <p className="text-lg font-bold text-neutral-900 dark:text-white">{item.total}</p>
+                    <span className="text-[10px] text-neutral-400">gün</span>
                   </div>
                 </div>
               ))}
-              {/* Hourly Leave Summary Card */}
-              <div
-                className="bg-gradient-to-br from-white/90 to-white/40 dark:from-neutral-800/70 dark:to-neutral-900/50 rounded-md p-4 border border-white/40 dark:border-neutral-800 shadow-lg"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="text-2xl">⏱️</div>
-                  <span className="text-xs font-semibold text-neutral-500 uppercase">SAATLİK</span>
-                </div>
-                <p className="text-4xl font-black text-neutral-900 dark:text-white">--</p>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400">Yıllık izinden düşer</p>
-                <div className="mt-3 h-2 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
-                  <div className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full" style={{ width: '100%' }} />
-                </div>
-              </div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-stone-50 dark:bg-neutral-900 rounded-lg p-6 border border-stone-200/50 dark:border-neutral-800 shadow-lg">
+            {/* Create Request Form */}
+            <div className="bg-stone-50 dark:bg-neutral-900 rounded-3xl p-6 border border-stone-200/50 dark:border-neutral-800 shadow-lg">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h2 className="text-xl font-semibold text-neutral-900 dark:text-white">Yeni Talep Oluştur</h2>
@@ -295,6 +562,7 @@ const LeaveManagementPage: React.FC<LeaveManagementPageProps> = ({
                 </div>
               </div>
               <form className="space-y-4" onSubmit={handleSubmit}>
+                {/* Form Inputs */}
                 <div>
                   <label className="block text-sm font-medium text-neutral-600 dark:text-neutral-300 mb-2">İzin Türü</label>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -308,7 +576,7 @@ const LeaveManagementPage: React.FC<LeaveManagementPageProps> = ({
                           : 'border-transparent bg-white dark:bg-neutral-800 hover:border-neutral-200 dark:hover:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-750 shadow-sm'
                           }`}
                       >
-                        <div className={`text-2xl mb-1 transition-transform group-hover:scale-110 ${!formData.isHourly && formData.leaveType === item.key ? 'scale-110' : ''}`}>
+                        <div className={`mb-1 transition-transform group-hover:scale-110 ${!formData.isHourly && formData.leaveType === item.key ? 'scale-110 text-white' : 'text-neutral-500 dark:text-neutral-400'}`}>
                           {item.icon}
                         </div>
                         <span className={`text-sm font-semibold ${!formData.isHourly && formData.leaveType === item.key
@@ -318,13 +586,19 @@ const LeaveManagementPage: React.FC<LeaveManagementPageProps> = ({
                           {item.label}
                         </span>
 
+                        {/* Tooltip */}
+                        <div className="absolute opacity-0 group-hover:opacity-100 transition-opacity duration-200 bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-slate-800/90 text-white text-[10px] rounded-lg shadow-lg pointer-events-none z-20 backdrop-blur-sm border border-slate-700">
+                          <div className="font-semibold mb-0.5 text-amber-400">Yasal Mevzuat</div>
+                          {leaveTooltips[item.key] || 'Yasal düzenlemelere tabidir.'}
+                          <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800/90"></div>
+                        </div>
+
                         {!formData.isHourly && formData.leaveType === item.key && (
                           <div className={`absolute inset-0 rounded-xl ring-2 ring-${item.accent.split('-')[1]}-500 ring-opacity-50 pointer-events-none`} />
                         )}
                       </button>
                     ))}
 
-                    {/* Hourly Leave Button */}
                     <button
                       type="button"
                       onClick={() => setFormData((prev) => ({ ...prev, isHourly: true, leaveType: 'annual' }))}
@@ -333,8 +607,8 @@ const LeaveManagementPage: React.FC<LeaveManagementPageProps> = ({
                         : 'border-transparent bg-white dark:bg-neutral-800 hover:border-neutral-200 dark:hover:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-750 shadow-sm'
                         }`}
                     >
-                      <div className={`text-2xl mb-1 transition-transform group-hover:scale-110 ${formData.isHourly ? 'scale-110' : ''}`}>
-                        ⏱️
+                      <div className={`mb-1 transition-transform group-hover:scale-110 ${formData.isHourly ? 'scale-110 text-white' : 'text-neutral-500 dark:text-neutral-400'}`}>
+                        <Clock className="w-6 h-6" />
                       </div>
                       <span className={`text-sm font-semibold ${formData.isHourly
                         ? 'text-white'
@@ -420,169 +694,12 @@ const LeaveManagementPage: React.FC<LeaveManagementPageProps> = ({
               </form>
             </div>
 
-            <div className="bg-stone-50 dark:bg-neutral-900 rounded-lg p-6 border border-stone-200/50 dark:border-neutral-800 shadow-lg">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-xl font-semibold text-neutral-900 dark:text-white">Talep Geçmişim</h2>
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                    Son 6 ay içindeki izin talepleriniz
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1 custom-scrollbar">
-                {employeeHistory.length === 0 ? (
-                  <div className="flex items-center justify-center h-32 text-sm text-neutral-500 dark:text-neutral-400 bg-neutral-50 dark:bg-neutral-800/50 rounded-md border border-dashed border-neutral-200 dark:border-neutral-700">
-                    Henüz talep oluşturmadınız.
-                  </div>
-                ) : (
-                  employeeHistory.map((request) => (
-                    <div
-                      key={request.id}
-                      className="p-4 rounded-md border border-neutral-200 dark:border-neutral-800 bg-white/80 dark:bg-neutral-800/60 shadow-sm space-y-1"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm font-semibold text-neutral-900 dark:text-white">
-                          {leaveTypeLabels[request.leaveType]}
-                        </div>
-                        <span
-                          className={`text-xs font-bold px-2 py-1 rounded-full ${request.status === 'approved'
-                            ? 'bg-green-100 text-green-700'
-                            : request.status === 'rejected'
-                              ? 'bg-red-100 text-red-600'
-                              : 'bg-amber-100 text-amber-600'
-                            }`}
-                        >
-                          {request.status === 'approved'
-                            ? 'Onaylandı'
-                            : request.status === 'rejected'
-                              ? 'Reddedildi'
-                              : 'Beklemede'}
-                        </span>
-                      </div>
-                      <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                        {request.startDate} → {request.endDate} • {request.totalDays} gün
-                      </p>
-                      {request.reason && (
-                        <p className="text-sm text-neutral-600 dark:text-neutral-300 line-clamp-2">
-                          {request.reason}
-                        </p>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
+            {/* Admin Panel (if admin) or Employee History (if not admin) */}
+            {userRole === 'admin' ? AdminPanelComponent : EmployeeHistoryComponent}
           </div>
 
-          {userRole === 'admin' && (
-            <div className="bg-stone-50 dark:bg-neutral-900 rounded-lg p-6 border border-stone-200/50 dark:border-neutral-800 shadow-lg">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-                <div>
-                  <h2 className="text-xl font-semibold text-neutral-900 dark:text-white">Gelen Talepler</h2>
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                    Yöneticisi olduğunuz çalışanların bekleyen izin talepleri
-                  </p>
-                </div>
-                <button
-                  onClick={fetchAdminRequests}
-                  className="px-4 py-2 rounded-md border border-neutral-200 dark:border-neutral-700 text-sm font-semibold text-neutral-600 dark:text-neutral-300 hover:border-primary-400"
-                >
-                  Listeyi Yenile
-                </button>
-              </div>
-
-              {adminError && (
-                <div className="mb-4 text-sm text-red-600 dark:text-red-400">
-                  {adminError}
-                </div>
-              )}
-
-              <div className="overflow-x-auto custom-scrollbar">
-                <table className="min-w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-neutral-500 dark:text-neutral-400 uppercase text-xs tracking-wider">
-                      <th className="py-3 pr-4">Çalışan</th>
-                      <th className="py-3 pr-4">Tür</th>
-                      <th className="py-3 pr-4">Tarih Aralığı</th>
-                      <th className="py-3 pr-4">Süre</th>
-                      <th className="py-3 pr-4">Durum</th>
-                      <th className="py-3">İşlemler</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {adminLoading ? (
-                      <tr>
-                        <td colSpan={6} className="py-6 text-center text-neutral-500">
-                          Talepler yükleniyor...
-                        </td>
-                      </tr>
-                    ) : adminRequests.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="py-6 text-center text-neutral-500">
-                          Bekleyen talep bulunmuyor.
-                        </td>
-                      </tr>
-                    ) : (
-                      adminRequests.map((request) => (
-                        <tr
-                          key={request.id}
-                          className="border-t border-neutral-100 dark:border-neutral-800"
-                        >
-                          <td className="py-4 pr-4 font-semibold text-neutral-800 dark:text-white">
-                            {request.reason?.split('|')[0] || 'Çalışan'}
-                          </td>
-                          <td className="py-4 pr-4">
-                            <span className="inline-flex items-center px-2 py-1 rounded-full bg-primary-50 text-primary-600 text-xs font-semibold">
-                              {leaveTypeLabels[request.leaveType]}
-                            </span>
-                          </td>
-                          <td className="py-4 pr-4 text-neutral-600 dark:text-neutral-300">
-                            {request.startDate} → {request.endDate}
-                          </td>
-                          <td className="py-4 pr-4 text-neutral-600 dark:text-neutral-300">
-                            {request.totalDays} gün
-                          </td>
-                          <td className="py-4 pr-4">
-                            <span
-                              className={`text-xs font-bold px-2 py-1 rounded-full ${request.status === 'approved'
-                                ? 'bg-green-100 text-green-700'
-                                : request.status === 'rejected'
-                                  ? 'bg-red-100 text-red-600'
-                                  : 'bg-amber-100 text-amber-600'
-                                }`}
-                            >
-                              {request.status === 'approved'
-                                ? 'Onaylandı'
-                                : request.status === 'rejected'
-                                  ? 'Reddedildi'
-                                  : 'Beklemede'}
-                            </span>
-                          </td>
-                          <td className="py-4 space-x-2">
-                            <button
-                              onClick={() => handleAdminAction(request.id, 'approved')}
-                              disabled={request.status === 'approved'}
-                              className="px-3 py-1.5 rounded-md bg-green-100 text-green-700 text-xs font-semibold hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              Onayla
-                            </button>
-                            <button
-                              onClick={() => handleAdminAction(request.id, 'rejected')}
-                              disabled={request.status === 'rejected'}
-                              className="px-3 py-1.5 rounded-md bg-red-100 text-red-600 text-xs font-semibold hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              Reddet
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+          {/* Employee History for Admin (moved to bottom) */}
+          {userRole === 'admin' && EmployeeHistoryComponent}
         </div>
       </div>
     </>
@@ -590,5 +707,3 @@ const LeaveManagementPage: React.FC<LeaveManagementPageProps> = ({
 };
 
 export default LeaveManagementPage;
-
-

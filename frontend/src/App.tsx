@@ -17,6 +17,7 @@ import LeaveManagementPage from './pages/LeaveManagementPage';
 import EmployeeManagementPage from './pages/EmployeeManagementPage';
 import EmployeeCreatePage from './pages/EmployeeCreatePage';
 import SettingsPage from './pages/SettingsPage';
+import ModernDashboard from './pages/ModernDashboard';
 import { useNavigate } from 'react-router-dom';
 
 function App() {
@@ -111,7 +112,7 @@ function App() {
         <Route
           path="/"
           element={
-            <DashboardView
+            <ModernDashboard
               dashboardData={dashboardData}
               currentTime={currentTime}
               isDarkMode={isDarkMode}

@@ -1,4 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
+import secrets
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
@@ -14,11 +17,41 @@ from routers import (
     tasks,
     leaves,
     assets,
-    general
+    general,
+    users
 )
 
 # Initialize App
-app = FastAPI(title="HR Dashboard API", version="2.2.0")
+app = FastAPI(
+    title="HR Dashboard API",
+    version="2.3.0",
+    docs_url=None,  # Disable default docs
+    redoc_url=None  # Disable default redoc
+)
+security = HTTPBasic()
+
+def check_docs_auth(credentials: HTTPBasicCredentials = Depends(security)):
+    """
+    Check username/password for docs access.
+    Default: admin / hrpass123 (CHANGE THIS IN PROD)
+    """
+    correct_username = secrets.compare_digest(credentials.username, "admin")
+    correct_password = secrets.compare_digest(credentials.password, "hrpass123")
+    if not (correct_username and correct_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
+
+@app.get("/docs", include_in_schema=False)
+async def get_swagger_documentation(username: str = Depends(check_docs_auth)):
+    return get_swagger_ui_html(openapi_url="/openapi.json", title="docs")
+
+@app.get("/redoc", include_in_schema=False)
+async def get_redoc_documentation(username: str = Depends(check_docs_auth)):
+    return get_redoc_html(openapi_url="/openapi.json", title="redoc")
 
 # Initialize Rate Limiter
 app.state.limiter = limiter
@@ -31,6 +64,7 @@ app.include_router(tasks.router)
 app.include_router(leaves.router)
 app.include_router(assets.router)
 app.include_router(general.router)
+app.include_router(users.router)
 
 # Configure Uploads
 UPLOAD_DIR = Path("uploads")
@@ -38,9 +72,16 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # Configure CORS
+origins = [
+    "http://localhost:3000",
+    "https://eskidc.com",
+    "https://www.eskidc.com",
+    "https://api.eskidc.com"
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -50,20 +91,20 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     logger.info("=" * 60)
-    logger.info("🚀 HR Dashboard API Starting...")
+    logger.info("[START] HR Dashboard API Starting...")
     logger.info("=" * 60)
     
     # Test Database Connection
-    logger.info("📊 Testing database connection...")
+    logger.info("[INFO] Testing database connection...")
     conn = db_manager.get_connection()
     if conn:
         conn.close()
-        logger.info("✅ Database connection pool initialized")
+        logger.info("[OK] Database connection pool initialized")
     else:
-        logger.error("❌ Database connection failed")
+        logger.error("[ERROR] Database connection failed")
         
-    logger.info("🔒 JWT authentication enabled (30 min expiration)")
-    logger.info("🚦 Rate limiting active (5 login attempts/minute)")
+    logger.info("[SEC] JWT authentication enabled (30 min expiration)")
+    logger.info("[INFO] Rate limiting active (5 login attempts/minute)")
     logger.info("=" * 60)
 
 # Base Endpoints

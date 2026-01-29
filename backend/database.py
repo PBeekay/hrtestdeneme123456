@@ -13,7 +13,7 @@ load_dotenv()
 # Database configuration
 DB_CONFIG = {
     'host': os.getenv('DB_HOST', 'localhost'),
-    'port': int(os.getenv('DB_PORT', 3307)),
+    'port': int(os.getenv('DB_PORT', 3306)),
     'user': os.getenv('DB_USER'),
     'password': os.getenv('DB_PASSWORD'),
     'database': os.getenv('DB_NAME'),
@@ -28,7 +28,7 @@ DB_CONFIG = {
 
 # Validate critical configuration
 if not DB_CONFIG['user'] or not DB_CONFIG['password'] or not DB_CONFIG['database']:
-    raise ValueError("❌ Database credentials missing! Please check .env file.")
+    raise ValueError("[ERROR] Database credentials missing! Please check .env file.")
 
 # Create connection pool
 # This will maintain a pool of 2-10 connections
@@ -42,7 +42,7 @@ db_pool = PooledDB(
     **DB_CONFIG
 )
 
-print("✅ Database connection pool initialized")
+print("[OK] Database connection pool initialized")
 
 
 def get_db_connection():

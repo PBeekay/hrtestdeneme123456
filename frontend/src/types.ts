@@ -12,6 +12,10 @@ export interface LeaveBalance {
   annual: number;
   sick: number;
   personal: number;
+  paternity: number;
+  maternity: number;
+  marriage: number;
+  death: number;
 }
 
 export interface Task {
@@ -47,7 +51,7 @@ export interface WorkDay {
 
 export interface LeaveRequest {
   id: number;
-  leaveType: 'annual' | 'sick' | 'personal';
+  leaveType: 'annual' | 'sick' | 'personal' | 'paternity' | 'maternity' | 'marriage' | 'death';
   startDate: string;
   endDate: string;
   totalDays: number;

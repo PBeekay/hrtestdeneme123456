@@ -5,10 +5,11 @@ from dependencies import (
     get_current_user,
     dashboard_repo,
     schedule_repo,
-    user_repo
+    user_repo,
+    reminder_repo
 )
 from logger import logger, log_error
-from schemas import DashboardData, WidgetConfig
+from schemas import DashboardData, WidgetConfig, MonitorTarget
 
 router = APIRouter(tags=["Dashboard"])
 
@@ -81,3 +82,63 @@ def get_work_sched(user_id: int, days: int = 7):
     """
     schedule = schedule_repo.get_schedule(user_id, days)
     return {"workSchedule": schedule}
+
+
+@router.get("/api/reminders")
+def get_reminders(current_user: dict = Depends(get_current_user)):
+    """
+    Kullanıcı için hatırlatmaları döndürür (Deneme süresi, vergi vb.)
+    """
+    user_id = current_user.get('user_id')
+    reminders = reminder_repo.get_reminders(user_id)
+    return {"reminders": reminders}
+
+
+@router.get("/api/status", response_model=List[MonitorTarget])
+def get_system_status():
+    """
+    Returns mock system status for the dashboard
+    """
+    import random
+    from datetime import datetime
+    
+    targets = [
+        {
+            "target_id": 1,
+            "name": "Primary API Server",
+            "url": "https://api.hrapp.com",
+            "status": "up",
+            "latency_ms": random.uniform(45, 120),
+            "last_check": datetime.now().isoformat(),
+            "history_preview": [random.uniform(40, 150) for _ in range(15)]
+        },
+        {
+            "target_id": 2,
+            "name": "Database Cluster",
+            "url": "db-prod-01.internal",
+            "status": "up",
+            "latency_ms": random.uniform(10, 40),
+            "last_check": datetime.now().isoformat(),
+            "history_preview": [random.uniform(10, 50) for _ in range(15)]
+        },
+        {
+            "target_id": 3,
+            "name": "CDN / Static",
+            "url": "https://cdn.hrapp.com",
+            "status": "up",
+            "latency_ms": random.uniform(20, 80),
+            "last_check": datetime.now().isoformat(),
+            "history_preview": [random.uniform(20, 100) for _ in range(15)]
+        },
+        {
+            "target_id": 4,
+            "name": "Auth Service",
+            "url": "https://auth.hrapp.com",
+            "status": "degraded" if random.random() > 0.8 else "up",
+            "latency_ms": random.uniform(100, 300),
+            "last_check": datetime.now().isoformat(),
+            "history_preview": [random.uniform(100, 400) for _ in range(15)]
+        }
+    ]
+    return targets
+
