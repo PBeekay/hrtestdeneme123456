@@ -6,10 +6,9 @@ interface NavbarProps {
     userInfo: UserInfo;
     notifications: Announcement[];
     onLogout: () => void;
-    onOpenAssets: () => void;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ userInfo, notifications, onLogout, onOpenAssets }) => {
+const Navbar: React.FC<NavbarProps> = ({ userInfo, notifications, onLogout }) => {
     const navigate = useNavigate();
     const location = useLocation();
     const [showNotifications, setShowNotifications] = useState(false);
@@ -19,7 +18,7 @@ const Navbar: React.FC<NavbarProps> = ({ userInfo, notifications, onLogout, onOp
         if (location.pathname === '/') return 'dashboard';
         if (location.pathname.startsWith('/employees')) return 'employees';
         if (location.pathname.startsWith('/leave')) return 'leave';
-        // Assets usually is a modal in this app, but if it has a route add here
+        if (location.pathname.startsWith('/assets')) return 'assets';
         return 'dashboard';
     };
 
@@ -66,8 +65,11 @@ const Navbar: React.FC<NavbarProps> = ({ userInfo, notifications, onLogout, onOp
                     </button>
 
                     <button
-                        onClick={onOpenAssets}
-                        className="nav-btn px-4 py-2 rounded-full text-sm transition-all text-slate-500 font-medium hover:bg-slate-50 hover:text-slate-900"
+                        onClick={() => navigate('/assets')}
+                        className={`nav-btn px-4 py-2 rounded-full text-sm transition-all ${viewId === 'assets'
+                                ? 'bg-slate-100 text-slate-900 font-semibold'
+                                : 'text-slate-500 font-medium hover:bg-slate-50 hover:text-slate-900'
+                            }`}
                     >
                         Zimmetler
                     </button>
