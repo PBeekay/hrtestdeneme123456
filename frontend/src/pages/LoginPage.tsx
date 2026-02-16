@@ -48,6 +48,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, error }) => {
               src="/vr_logo.png"
               alt="VR Logo"
               className="h-14 w-auto mx-auto drop-shadow-2xl"
+              style={{ filter: 'brightness(0) invert(8%) sepia(100%) saturate(7000%) hue-rotate(247deg) brightness(103%) contrast(143%)' }}
             />
           </div>
           <h1 className="text-2xl font-bold text-white mb-1">İK Kontrol Paneli</h1>

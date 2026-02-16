@@ -63,7 +63,7 @@ const LeaveManagementPage: React.FC<LeaveManagementPageProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [adminRequests, setAdminRequests] = useState<LeaveRequest[]>([]);
   const [adminLoading, setAdminLoading] = useState(false);
-  const [adminError, setAdminError] = useState<string | null>(null);
+  const [, setAdminError] = useState<string | null>(null);
   const [employeeHistory, setEmployeeHistory] = useState<LeaveRequest[]>(employeeRequests || []);
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;

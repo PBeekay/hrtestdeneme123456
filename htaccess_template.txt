@@ -1,0 +1,30 @@
+# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION BEGIN
+PassengerAppRoot "/home/kullaniciadi/backend"
+PassengerBaseURI "/"
+PassengerPython "/home/kullaniciadi/virtualenv/backend/3.10/bin/python"
+# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION END
+
+# React Router için yönlendirme (Sayfa yenilendiğinde 404 almamak için)
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  RewriteRule ^index\.html$ - [L]
+  
+  # Static dosyaları (css, js, images) Python'a gönderme, direkt ver
+  RewriteCond %{REQUEST_URI} ^/static/ [NC]
+  RewriteRule .* - [L]
+  
+  RewriteCond %{REQUEST_URI} ^/manifest.json$ [NC]
+  RewriteRule .* - [L]
+  
+  RewriteCond %{REQUEST_URI} ^/favicon.ico$ [NC]
+  RewriteRule .* - [L]
+
+  # Diğer tüm istekleri index.html'e yönlendir (React için)
+  # ANCAK: API isteklerini Python'a bırakmalıyız.
+  # Eğer API çağrıları /api/ ile başlıyorsa, onları elleme.
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{REQUEST_URI} !^/api/
+  RewriteRule . /index.html [L]
+</IfModule>

@@ -104,9 +104,16 @@ export const fetchWithAuth = async <T>(
 export const api = {
   // Authentication
   login: async (username: string, password: string) => {
+    const formData = new URLSearchParams();
+    formData.append('username', username);
+    formData.append('password', password);
+
     return fetchWithAuth<{ token: string; message: string; user_role: string }>('/api/login', {
       method: 'POST',
-      body: JSON.stringify({ username, password }),
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: formData.toString(),
     });
   },
 
@@ -227,12 +234,12 @@ export const api = {
   },
 
   // Employees
-  getEmployeeStats: async () => {
-    return fetchWithAuth('/api/employees/stats');
+  getEmployeeStats: async <T = any>() => {
+    return fetchWithAuth<T>('/api/employees/stats');
   },
 
-  getEmployees: async () => {
-    return fetchWithAuth('/api/employees');
+  getEmployees: async <T = any>() => {
+    return fetchWithAuth<T>('/api/employees');
   },
 
 

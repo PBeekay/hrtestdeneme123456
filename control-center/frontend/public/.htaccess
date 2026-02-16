@@ -1,0 +1,16 @@
+# React/Vite SPA Rewrite Rules
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{REQUEST_FILENAME} !-l
+  RewriteRule . /index.html [L]
+</IfModule>
+
+# Privacy & IP Restriction
+# Uncomment the following lines to restrict access to specific IPs
+# Order Deny,Allow
+# Deny from all
+# Allow from YOUR_IP_ADDRESS

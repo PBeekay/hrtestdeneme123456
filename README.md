@@ -1,12 +1,13 @@
-# 🏢 VR Fast IK Kontrol Paneli
+# 🏢 EskiDC HR Dashboard
 
-Modern, kullanıcı dostu B2B İnsan Kaynakları Yönetim Sistemi. Bento Grid tasarım felsefesi ile oluşturulmuş, tam özellikli bir İK dashboard uygulaması.
+Modern, kullanıcı dostu B2B İnsan Kaynakları Yönetim Sistemi. Bento Grid tasarım felsefesi ile oluşturulmuş, tam özellikli bir İK dashboard uygulaması. EskiDC.com için geliştirilmiştir.
 
 ![Version](https://img.shields.io/badge/version-2.0-blue.svg)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.104-green.svg)
 ![React](https://img.shields.io/badge/React-18.2-blue.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-4.9-blue.svg)
 ![MariaDB](https://img.shields.io/badge/MariaDB-10.11-orange.svg)
+![License](https://img.shields.io/badge/License-MIT-purple.svg)
 
 ## ✨ Özellikler
 
@@ -42,16 +43,16 @@ Modern, kullanıcı dostu B2B İnsan Kaynakları Yönetim Sistemi. Bento Grid ta
 
 ### Gereksinimler
 
-- **Python** 3.9 veya üzeri
+- **Python** 3.10 veya üzeri
 - **Node.js** 16 veya üzeri
-- **MariaDB** 10.11 veya üzeri
+- **MariaDB** 10.5 veya üzeri
 - **npm** veya yarn
 
 ### 1. Projeyi İndirin
 
 ```bash
-git clone https://github.com/kullaniciadi/hrtest.git
-cd hrtest
+git clone https://github.com/berkaypekersoy/eskidc-hr-dashboard.git
+cd eskidc-hr-dashboard
 ```
 
 ### 2. MariaDB Kurulumu

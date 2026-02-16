@@ -1,92 +1,39 @@
-from fastapi import APIRouter, Request, HTTPException, Depends
-from typing import Optional
-from datetime import datetime, timedelta
-from slowapi import Limiter
-from slowapi.util import get_remote_address
+from datetime import timedelta
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from fastapi.security import OAuth2PasswordRequestForm
+from core.config import settings
+from core.security import create_access_token
+from dependencies import get_db
+from repositories.user_repo import user_repo
+from schemas import Token, LoginResponse
 
-from auth import create_access_token
-from logger import logger, log_auth_attempt
-from dependencies import user_repo, session_repo, limiter, audit_repo
-from schemas import LoginRequest, LoginResponse, LogoutRequest
+router = APIRouter(
+    prefix="",
+    tags=["authentication"]
+)
 
-router = APIRouter(tags=["Authentication"])
-
-@router.post("/api/login", response_model=LoginResponse)
-@limiter.limit("5/minute")  # Max 5 login attempts per minute per IP
-def login(request: Request, credentials: LoginRequest):
-    """
-    HR Manager login endpoint with database authentication
-    Credentials are stored in database with bcrypt hashing
-    """
-    client_ip = get_remote_address(request)
-    
-    # Log login attempt
-    logger.info(f"[AUTH] Login attempt | Username: {credentials.username} | IP: {client_ip}")
-    
-    # Authenticate user against database
-    user = user_repo.authenticate(credentials.username, credentials.password)
-    
-    if user:
-        # Determine application role for authorization checks
-        # Prefer the explicit user_role column; fall back to 'employee'
-        app_role = user.get('user_role', 'employee')
-
-        # Generate JWT token with expiration (30 minutes)
-        token_data = {
-            "sub": user['username'],
-            "user_id": user['id'],
-            "role": app_role
-        }
-        token = create_access_token(token_data)
-        
-        # Also store session in database for tracking (optional)
-        expires_at = datetime.now() + timedelta(minutes=30)
-        session_repo.create(user['id'], token, expires_at)
-        
-        # Log successful login
-        log_auth_attempt(credentials.username, True, client_ip)
-        logger.info(f"[OK] Login successful | User: {user['username']} | Role: {user.get('user_role')} | IP: {client_ip}")
-        
-        # AUDIT LOG
-        audit_repo.log_action(
-            user_id=user['id'], 
-            username=user['username'], 
-            action="LOGIN", 
-            entity="session", 
-            ip_address=client_ip
-        )
-        
-        return {
-            "success": True,
-            "message": "Giriş başarılı!",
-            "token": token,
-            "user_id": user['id'],
-            "user_role": user.get('user_role', 'employee')
-        }
-    else:
-        # Log failed login
-        log_auth_attempt(credentials.username, False, client_ip)
-        logger.warning(f"[ERROR] Login failed | Username: {credentials.username} | IP: {client_ip}")
-
-        # AUDIT LOG (Login Failed)
-        audit_repo.log_action(
-            user_id=None, 
-            username=credentials.username, 
-            action="LOGIN_FAILED", 
-            ip_address=client_ip
-        )
+@router.post("/login", response_model=LoginResponse)
+def login_access_token(db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = Depends()):
+    user = user_repo.authenticate(db, username=form_data.username, password=form_data.password)
+    if not user:
         raise HTTPException(
-            status_code=401,
-            detail="Kullanıcı adı veya şifre hatalı!"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Hatalı kullanıcı adı veya şifre",
+            headers={"WWW-Authenticate": "Bearer"},
         )
-
-@router.post("/api/logout")
-def logout(logout_req: LogoutRequest):
-    """
-    Logout endpoint - invalidate session token
-    """
-    session_repo.delete(logout_req.token)
+    if not user.is_active:
+        raise HTTPException(status_code=400, detail="Kullanıcı aktif değil")
+        
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        subject=user.username, expires_delta=access_token_expires
+    )
+    
     return {
         "success": True,
-        "message": "Çıkış başarılı"
+        "message": "Giriş başarılı",
+        "token": access_token,
+        "user_id": user.id,
+        "user_role": user.type
     }

@@ -1,144 +1,79 @@
-from fastapi import APIRouter, Depends, HTTPException, Body
-from typing import List, Optional
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from dependencies import get_db, get_current_active_user
+from repositories.leave_repo import leave_repo
+from repositories.task_repo import task_repo
+from repositories.user_repo import user_repo
+from models import User
+from schemas import DashboardData, LeaveBalance, PerformanceMetric, Announcement
 
-from dependencies import (
-    get_current_user,
-    dashboard_repo,
-    schedule_repo,
-    user_repo,
-    reminder_repo
+router = APIRouter(
+    prefix="/dashboard",
+    tags=["dashboard"]
 )
-from logger import logger, log_error
-from schemas import DashboardData, WidgetConfig, MonitorTarget
 
-router = APIRouter(tags=["Dashboard"])
+@router.get("/", response_model=DashboardData)
+def get_dashboard_data(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    # Mock Veri Yapısı
+    # Veri Çekme İşlemi
+    
+    # İzin Bakiyesi
+    # İzin İlişkisi Kontrolü
+    lb = current_user.leave_balance if hasattr(current_user, 'leave_balance') and current_user.leave_balance else None
+    leave_balance = LeaveBalance(
+        annual=lb.annual_leave if lb else 0,
+        sick=lb.sick_leave if lb else 0,
+        personal=lb.personal_leave if lb else 0
+    )
 
-@router.get("/api/dashboard")
-def get_dashboard_data(current_user: dict = Depends(get_current_user)):
-    """
-    Returns dashboard data from database for authenticated user
-    Supports both admin and employee roles
-    Requires valid JWT token
-    """
-    user_id = current_user.get('user_id')
-    user_role = current_user.get('role', 'employee')
-    username = current_user.get('sub', 'unknown')
+    # Görevler
+    tasks = task_repo.get_multi_by_owner(db, user_id=current_user.id, limit=5)
     
-    logger.info(f"📊 Dashboard request | User: {username} (ID: {user_id}) | Role: {user_role}")
+    # Performans
+    performance = [
+        PerformanceMetric(label="Verimlilik", value=85, maxValue=100),
+        PerformanceMetric(label="Devamlılık", value=95, maxValue=100)
+    ]
     
-    try:
-        if user_role == 'employee':
-            dashboard_data = dashboard_repo.get_employee_data(user_id)
-        else:
-            dashboard_data = dashboard_repo.get_user_data(user_id)
+    # Duyurular
+    announcements = [] # Duyuru Reposu Eklenecek
+    
+    # İzin Talepleri ve Çalışanlar
+    leave_requests = []
+    employees = []
+    employee_stats = None
+
+    if current_user.type in ['manager', 'admin', 'assistant_manager', 'boss']:
+        # Yönetici ise tüm izin taleplerini ve çalışanları görebilir
+        leave_requests = leave_repo.get_multi(db, limit=5)
+        # Tüm kullanıcıları çekiyoruz ama sadece tip kontrolü yapıp employee olanları filtreleyebiliriz veya direkt dönebiliriz
+        # Şimdilik user_repo.get_multi kullanıyoruz
+        all_users = user_repo.get_multi(db, limit=10)
+        employees = all_users # Frontend UserResponse bekliyor, EmployeeResponse UserResponse'dan türüyor
         
-        if dashboard_data:
-            logger.info(f"✅ Dashboard data loaded | User: {username}")
-            return dashboard_data
-        else:
-            logger.error(f"❌ Dashboard data not found | User ID: {user_id}")
-            raise HTTPException(
-                status_code=404,
-                detail="Kullanıcı verileri bulunamadı"
-            )
-    except Exception as e:
-        log_error(e, f"Dashboard data fetch for user {username}")
-        raise HTTPException(status_code=500, detail="Veri yüklenirken hata oluştu")
-
-
-@router.get("/api/widgets")
-def get_widgets(user_id: int):
-    """
-    Kullanıcının widget yapılandırmasını döndürür
-    """
-    widgets = dashboard_repo.get_widgets(user_id)
-    return {"widgets": widgets}
-
-
-@router.put("/api/widgets")
-def update_widgets(user_id: int, widgets: List[WidgetConfig]):
-    """
-    Kullanıcının widget yapılandırmasını günceller
-    """
-    widget_list = [w.dict() for w in widgets]
-    success = dashboard_repo.update_widgets(user_id, widget_list)
-    
-    if success:
-        return {
-            "success": True,
-            "message": "Widget yapılandırması güncellendi"
+        # İstatistikler (Mock veya gerçek count metodu varsa)
+        # BaseRepository'de count metodu olmayabilir, len() alabiliriz veya implemente edebiliriz
+        # Şimdilik basitçe len() kullanıyoruz veya mock
+        employee_stats = {
+            "totalEmployees": len(all_users),
+            "onLeave": 0, # İzin repo'dan çekilebilir
+            "pendingDocuments": 0,
+            "onboarding": 0
         }
     else:
-        raise HTTPException(
-            status_code=500,
-            detail="Widget güncellenemedi"
-        )
+        # Çalışan ise sadece kendi izin taleplerini görür
+        leave_requests = leave_repo.get_by_user(db, user_id=current_user.id, limit=5)
 
-
-@router.get("/api/work-schedule")
-def get_work_sched(user_id: int, days: int = 7):
-    """
-    Çalışanın belirtilen gün sayısı için çalışma takvimini döndürür
-    """
-    schedule = schedule_repo.get_schedule(user_id, days)
-    return {"workSchedule": schedule}
-
-
-@router.get("/api/reminders")
-def get_reminders(current_user: dict = Depends(get_current_user)):
-    """
-    Kullanıcı için hatırlatmaları döndürür (Deneme süresi, vergi vb.)
-    """
-    user_id = current_user.get('user_id')
-    reminders = reminder_repo.get_reminders(user_id)
-    return {"reminders": reminders}
-
-
-@router.get("/api/status", response_model=List[MonitorTarget])
-def get_system_status():
-    """
-    Returns mock system status for the dashboard
-    """
-    import random
-    from datetime import datetime
-    
-    targets = [
-        {
-            "target_id": 1,
-            "name": "Primary API Server",
-            "url": "https://api.hrapp.com",
-            "status": "up",
-            "latency_ms": random.uniform(45, 120),
-            "last_check": datetime.now().isoformat(),
-            "history_preview": [random.uniform(40, 150) for _ in range(15)]
-        },
-        {
-            "target_id": 2,
-            "name": "Database Cluster",
-            "url": "db-prod-01.internal",
-            "status": "up",
-            "latency_ms": random.uniform(10, 40),
-            "last_check": datetime.now().isoformat(),
-            "history_preview": [random.uniform(10, 50) for _ in range(15)]
-        },
-        {
-            "target_id": 3,
-            "name": "CDN / Static",
-            "url": "https://cdn.hrapp.com",
-            "status": "up",
-            "latency_ms": random.uniform(20, 80),
-            "last_check": datetime.now().isoformat(),
-            "history_preview": [random.uniform(20, 100) for _ in range(15)]
-        },
-        {
-            "target_id": 4,
-            "name": "Auth Service",
-            "url": "https://auth.hrapp.com",
-            "status": "degraded" if random.random() > 0.8 else "up",
-            "latency_ms": random.uniform(100, 300),
-            "last_check": datetime.now().isoformat(),
-            "history_preview": [random.uniform(100, 400) for _ in range(15)]
-        }
-    ]
-    return targets
-
+    return DashboardData(
+        userInfo=current_user,
+        leaveBalance=leave_balance,
+        pendingTasks=tasks,
+        performance=performance,
+        announcements=announcements,
+        leaveRequests=leave_requests,
+        employees=employees,
+        employeeStats=employee_stats
+    )

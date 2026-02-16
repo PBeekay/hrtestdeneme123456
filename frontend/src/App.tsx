@@ -5,14 +5,13 @@ import ToastContainer from './components/ui/ToastContainer';
 import Confetti from './components/ui/Confetti';
 import LoginPage from './pages/LoginPage';
 import AssetManagementPanel from './components/dashboard/AssetManagementPanel';
-import DashboardView from './components/dashboard/DashboardView';
+// import DashboardView from './components/dashboard/DashboardView'; // Removed unused import
 import Layout from './components/layout/Layout';
 import { useDarkMode } from './hooks/useDarkMode';
 import { useToast } from './hooks/useToast';
 import { useAuth } from './hooks/useAuth';
 import { useDashboard } from './hooks/useDashboard';
 import { useTasks } from './hooks/useTasks';
-import { useSearch } from './hooks/useSearch';
 import LeaveManagementPage from './pages/LeaveManagementPage';
 import EmployeeManagementPage from './pages/EmployeeManagementPage';
 import EmployeeCreatePage from './pages/EmployeeCreatePage';
@@ -34,12 +33,11 @@ function App() {
   const pendingTasks = dashboardData?.pendingTasks || [];
   const announcements = dashboardData?.announcements || [];
 
-  const { completedTasks, showConfetti, handleTaskComplete, getActiveTasks } = useTasks(pendingTasks);
-  const { handleSearch, filterTasks, filterAnnouncements } = useSearch();
+  // const { completedTasks, showConfetti, handleTaskComplete, getActiveTasks } = useTasks(pendingTasks);
+  const { showConfetti } = useTasks(pendingTasks);
 
-  const filteredTasks = filterTasks(pendingTasks);
-  const filteredAnnouncements = filterAnnouncements(announcements);
-  const activeTasks = getActiveTasks(pendingTasks);
+  // const activeTasks = getActiveTasks(pendingTasks);
+
 
   const toggleDarkMode = () => {
     setIsDarkMode((prev: boolean) => !prev);
@@ -105,7 +103,12 @@ function App() {
   const handleNavigateToCreateEmployee = () => navigate('/employees/new');
 
   return (
-    <Layout>
+    <Layout
+      userInfo={dashboardData.userInfo}
+      notifications={dashboardData.announcements}
+      onLogout={handleLogout}
+      onOpenAssets={() => setShowAssetManagement(true)}
+    >
       <Confetti active={showConfetti} />
       <ToastContainer toasts={toasts} removeToast={removeToast} />
       <Routes>
@@ -118,12 +121,6 @@ function App() {
               isDarkMode={isDarkMode}
               toggleDarkMode={toggleDarkMode}
               handleLogout={handleLogout}
-              handleSearch={handleSearch}
-              filteredTasks={filteredTasks}
-              filteredAnnouncements={filteredAnnouncements}
-              completedTasks={completedTasks}
-              activeTasks={activeTasks}
-              handleTaskComplete={handleTaskComplete}
               addToast={addToast}
               setShowAssetManagement={setShowAssetManagement}
             />
@@ -154,6 +151,7 @@ function App() {
             />
           }
         />
+
         <Route
           path="/employees/new"
           element={

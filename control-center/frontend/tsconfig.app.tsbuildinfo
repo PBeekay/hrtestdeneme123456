@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/api.ts","./src/main.tsx","./src/vite-env.d.ts","./src/components/dashboard/metricschart.tsx","./src/components/dashboard/statuscard.tsx","./src/components/dashboard/systemheader.tsx","./src/components/ui/card.tsx","./src/hooks/usesystemstatus.ts","./src/types/index.ts"],"version":"5.6.3"}

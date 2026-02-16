@@ -10,3 +10,5 @@ dbutils==3.0.3
 slowapi==0.1.8
 python-multipart==0.0.6
 email-validator==2.1.0
+a2wsgi==1.8.0
+sqlalchemy

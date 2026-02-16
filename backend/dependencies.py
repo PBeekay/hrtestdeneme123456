@@ -1,74 +1,70 @@
-from fastapi import Header, HTTPException, Depends
-from typing import Optional
-from slowapi import Limiter
-from slowapi.util import get_remote_address
-from auth import verify_token
-from logger import logger
-from repositories import (
-    DatabaseManager,
-    UserRepository,
-    LeaveRepository,
-    TaskRepository,
-    AssetRepository,
-    DashboardRepository,
-    AnnouncementRepository,
-    SessionRepository,
-    WorkScheduleRepository,
-    ReminderRepository,
-    DocumentRepository,
-    AuditLogRepository
-)
+from typing import Generator, Optional
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.orm import Session
+from jose import jwt, JWTError
 
-# Initialize Repositories
-db_manager = DatabaseManager()
-user_repo = UserRepository()
-leave_repo = LeaveRepository()
-task_repo = TaskRepository()
-asset_repo = AssetRepository()
-dashboard_repo = DashboardRepository()
-announcement_repo = AnnouncementRepository()
-session_repo = SessionRepository()
-schedule_repo = WorkScheduleRepository()
-reminder_repo = ReminderRepository()
-doc_repo = DocumentRepository()
-audit_repo = AuditLogRepository()
+from db import SessionLocal
+from core.config import settings
+from core import security
+from models import User
 
-# Initialize Rate Limiter
-limiter = Limiter(key_func=get_remote_address)
+# OAuth2 şeması
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
-# Authentication Dependency
-async def get_current_user(authorization: Optional[str] = Header(None, alias="Authorization")):
+def get_db() -> Generator:
     """
-    Verify JWT token from Authorization header
-    Returns user data if valid, raises 401 if invalid/expired
+    Veritabanı Oturumu
     """
-    if not authorization:
-        logger.warning("[ERROR] Authorization header missing")
-        raise HTTPException(status_code=401, detail="Authorization header missing")
-    
-    # Extract token from "Bearer <token>"
     try:
-        parts = authorization.split()
-        if len(parts) != 2:
-            logger.warning(f"[ERROR] Invalid authorization header format: {authorization[:50]}")
-            raise HTTPException(status_code=401, detail="Invalid authorization header format")
+        db = SessionLocal()
+        yield db
+    finally:
+        db.close()
+
+def get_current_user(
+    db: Session = Depends(get_db), 
+    token: str = Depends(oauth2_scheme)
+) -> User:
+    """
+    Mevcut Kullanıcı Doğrulama
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Kimlik bilgileri doğrulanamadı",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
         
-        scheme, token = parts
-        if scheme.lower() != "bearer":
-            logger.warning(f"[ERROR] Invalid authentication scheme: {scheme}")
-            raise HTTPException(status_code=401, detail="Invalid authentication scheme")
-    except ValueError as e:
-        logger.warning(f"[ERROR] Error parsing authorization header: {e}")
-        raise HTTPException(status_code=401, detail="Invalid authorization header format")
-    
-    # Debug: Log token format (first/last 10 chars only for security)
-    logger.debug(f"[AUTH] Verifying token: {token[:10]}...{token[-10:] if len(token) > 20 else ''}")
-    
-    # Verify token
-    payload = verify_token(token)
-    if not payload:
-        logger.warning("[ERROR] Token verification failed")
-        raise HTTPException(status_code=401, detail="Token expired or invalid")
-    
-    logger.debug(f"[OK] Token verified for user: {payload.get('sub')}")
-    return payload
+    user = db.query(User).filter(User.username == username).first()
+    if user is None:
+        raise credentials_exception
+    return user
+
+def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
+    """
+    Aktif Kullanıcı Kontrolü
+    """
+    if not current_user.is_active:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
+
+def get_current_superuser(current_user: User = Depends(get_current_user)) -> User:
+    """
+    Süper Kullanıcı Kontrolü
+    """
+    # 'Manager' veya belirli yönetici bayrağı kontrolleri varsayılıyor.
+    # Şimdilik, 'is_superuser' alanı varsa polimorfik kimlik veya belirli alan kontrol edilebilir.
+    # Modellere göre, Yöneticilerin admin_level'ı var.
+    if current_user.type != "manager" and current_user.type != "admin": # Rollerine göre ayarlayın
+         raise HTTPException(
+            status_code=400, detail="Kullanıcının yeterli yetkisi yok"
+        )
+    return current_user
