@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
-import { DashboardData, Task } from '../types';
+import { DashboardData } from '../types';
 import { useNavigate } from 'react-router-dom';
 import LeaveManagementPage from './LeaveManagementPage';
-import AssetManagementPanel from '../components/dashboard/AssetManagementPanel';
 import AnnouncementModal from '../components/dashboard/AnnouncementModal';
 import AnnouncementDetailModal from '../components/dashboard/AnnouncementDetailModal';
-import EmployeeManagementPage from './EmployeeManagementPage';
 
 interface ModernDashboardProps {
     dashboardData: DashboardData;
@@ -14,24 +12,23 @@ interface ModernDashboardProps {
     toggleDarkMode: () => void;
     handleLogout: () => void;
     addToast: (message: string, type?: 'success' | 'error' | 'info' | 'warning') => void;
-    setShowAssetManagement: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const ModernDashboard: React.FC<ModernDashboardProps> = ({
     dashboardData,
     currentTime,
+    isDarkMode,
+    toggleDarkMode,
     handleLogout,
     addToast,
 }) => {
     const navigate = useNavigate();
     // const [viewId, setViewId] = useState<'dashboard' | 'people' | 'hiring' | 'leave'>('dashboard');
     // const [viewId, setViewId] = useState<'dashboard' | 'people' | 'hiring' | 'leave'>('dashboard');
-    const [viewId, setViewId] = useState<'dashboard' | 'hiring' | 'leave' | 'assets'>('dashboard');
+    const [viewId, setViewId] = useState<'dashboard' | 'hiring' | 'leave'>('dashboard');
     // const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [showBirthdayModal, setShowBirthdayModal] = useState(false);
-    // showAssetModal removed
-    const [showNotifications, setShowNotifications] = useState(false);
 
     // Agenda Detail Modal State
     const [selectedAnnouncement, setSelectedAnnouncement] = useState<any>(null);
@@ -49,24 +46,9 @@ const ModernDashboard: React.FC<ModernDashboardProps> = ({
     // Calculate pending leave requests
     const pendingLeavesCount = leaveRequests?.filter(req => req.status === 'pending').length || 0;
 
-    const switchView = (id: 'dashboard' | 'hiring' | 'leave' | 'assets') => {
+    const switchView = (id: 'dashboard' | 'hiring' | 'leave') => {
         setViewId(id);
     };
-
-    const openModal = () => {
-        // Navigate to the existing create employee page for full functionality
-        navigate('/employees/new');
-    };
-
-    // const closeModal = () => setIsModalOpen(false);
-
-
-
-    const filteredEmployees = employees?.filter(emp =>
-        emp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        emp.department.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        emp.role.toLowerCase().includes(searchQuery.toLowerCase())
-    ) || [];
 
     const getInitials = (name: string) => {
         return name
@@ -727,18 +709,7 @@ const ModernDashboard: React.FC<ModernDashboardProps> = ({
                     )
                 }
 
-                {/* VIEW: ASSETS */}
-                {
-                    viewId === 'assets' && (
-                        <div className="animate-fadeInUp">
-                            <AssetManagementPanel
-                                onClose={() => switchView('dashboard')} // Keeping prop name for now, will rename in next step
-                                onSuccess={(msg) => addToast(msg, 'success')}
-                                onError={(msg) => addToast(msg, 'error')}
-                            />
-                        </div>
-                    )
-                }
+
             </main >
 
             {/* BIRTHDAY MODAL */}

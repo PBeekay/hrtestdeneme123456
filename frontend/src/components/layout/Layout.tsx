@@ -9,10 +9,9 @@ interface LayoutProps {
     userInfo?: UserInfo;
     notifications?: Announcement[];
     onLogout?: () => void;
-    onOpenAssets?: () => void;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, userInfo, notifications, onLogout, onOpenAssets }) => {
+const Layout: React.FC<LayoutProps> = ({ children, userInfo, notifications, onLogout }) => {
     return (
         <div className="min-h-screen bg-stone-100 dark:bg-[#0F172A] font-sans flex flex-col">
             {userInfo && onLogout && (
@@ -20,7 +19,6 @@ const Layout: React.FC<LayoutProps> = ({ children, userInfo, notifications, onLo
                     userInfo={userInfo}
                     notifications={notifications || []}
                     onLogout={onLogout}
-                    onOpenAssets={onOpenAssets || (() => { })}
                 />
             )}
             <div className="flex-1">

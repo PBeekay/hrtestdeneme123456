@@ -21,7 +21,6 @@ import { useNavigate } from 'react-router-dom';
 
 function App() {
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [showAssetManagement, setShowAssetManagement] = useState(false);
 
   const [isDarkMode, setIsDarkMode] = useDarkMode();
   const { toasts, addToast, removeToast } = useToast();
@@ -31,7 +30,6 @@ function App() {
 
   // Get tasks and search functionality
   const pendingTasks = dashboardData?.pendingTasks || [];
-  const announcements = dashboardData?.announcements || [];
 
   // const { completedTasks, showConfetti, handleTaskComplete, getActiveTasks } = useTasks(pendingTasks);
   const { showConfetti } = useTasks(pendingTasks);
@@ -107,7 +105,6 @@ function App() {
       userInfo={dashboardData.userInfo}
       notifications={dashboardData.announcements}
       onLogout={handleLogout}
-      onOpenAssets={() => setShowAssetManagement(true)}
     >
       <Confetti active={showConfetti} />
       <ToastContainer toasts={toasts} removeToast={removeToast} />
@@ -122,7 +119,16 @@ function App() {
               toggleDarkMode={toggleDarkMode}
               handleLogout={handleLogout}
               addToast={addToast}
-              setShowAssetManagement={setShowAssetManagement}
+            />
+          }
+        />
+        <Route
+          path="/assets"
+          element={
+            <AssetManagementPanel
+              onClose={handleBackToDashboard}
+              onSuccess={(msg: string) => addToast(msg, 'success')}
+              onError={(msg: string) => addToast(msg, 'error')}
             />
           }
         />
@@ -173,13 +179,6 @@ function App() {
           }
         />
       </Routes>
-      {showAssetManagement && (
-        <AssetManagementPanel
-          onClose={() => setShowAssetManagement(false)}
-          onSuccess={(msg) => addToast(msg, 'success')}
-          onError={(msg) => addToast(msg, 'error')}
-        />
-      )}
     </Layout>
   );
 }
